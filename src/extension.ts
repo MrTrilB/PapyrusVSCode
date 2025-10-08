@@ -340,7 +340,7 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     // Starfield default path (from user input)
-    const starfieldDefault = 'C\\SteamLibrary\\steamapps\\common\\Starfield\\Data\\Scripts';
+  const starfieldDefault = 'C:\\SteamLibrary\\steamapps\\common\\Starfield\\Data\\Scripts';
     const sfPath = await vscode.window.showInputBox({
       title: 'Starfield Script Folder (Data/Scripts)',
       value: starfieldDefault,
@@ -351,7 +351,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     // Fallout 4 default path (from user input)
-    const fo4Default = 'C\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts';
+  const fo4Default = 'C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts';
     const fo4Path = await vscode.window.showInputBox({
       title: 'Fallout 4 Script Folder (Data/Scripts)',
       value: fo4Default,
