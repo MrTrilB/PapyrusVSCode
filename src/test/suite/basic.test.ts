@@ -57,6 +57,64 @@ suite('Papyrus Tools basic features', () => {
     assert.ok(defs && defs.length >= 1, 'Should find definition for Baz');
   });
 
+  test('Selecting game applies default profile settings', async () => {
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+
+    const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
+
+    const gameInspect = cfg.inspect<string>('game');
+    const gamesInspect = cfg.inspect<any>('games');
+    const starfieldInspect = cfg.inspect<any>('starfield');
+
+    const originalGameGlobal = gameInspect?.globalValue;
+    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
+    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
+    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
+    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
+    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+
+    try {
+      if (hasWorkspace) {
+        await cfg.update('games', {}, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('starfield', {}, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('game', 'Skyrim', vscode.ConfigurationTarget.Workspace);
+        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
+      }
+      await cfg.update('games', {}, vscode.ConfigurationTarget.Global);
+      await cfg.update('starfield', {}, vscode.ConfigurationTarget.Global);
+      await cfg.update('game', 'Skyrim', vscode.ConfigurationTarget.Global);
+      await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
+
+      let applied = false;
+      for (let attempt = 0; attempt < 12 && !applied; attempt++) {
+        await new Promise(res => setTimeout(res, 150));
+        const gamesState = cfg.inspect<any>('games');
+        const starfieldProfile = (gamesState?.workspaceValue?.starfield ?? gamesState?.globalValue?.starfield) || {};
+        const starfieldPaths: string[] = Array.isArray(starfieldProfile.scriptPaths) ? starfieldProfile.scriptPaths : [];
+        const starfieldCompiler = starfieldProfile.compiler?.path;
+
+        const starfieldConvenienceState = cfg.inspect<any>('starfield');
+        const starfieldConvenience = (starfieldConvenienceState?.workspaceValue ?? starfieldConvenienceState?.globalValue) || {};
+        const conveniencePaths: string[] = Array.isArray(starfieldConvenience.scriptPaths) ? starfieldConvenience.scriptPaths : [];
+
+        if (starfieldPaths.length > 0 && conveniencePaths.length > 0 && !!starfieldCompiler) {
+          applied = true;
+        }
+      }
+
+      assert.ok(applied, 'Default Starfield script paths and compiler should be applied after selecting the game');
+    } finally {
+      if (hasWorkspace) {
+        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      }
+      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('Diagnostics report missing EndIf', async () => {
     const content = [
       'ScriptName Foo extends Quest',

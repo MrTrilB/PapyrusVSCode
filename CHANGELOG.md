@@ -5,6 +5,13 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 ## [0.1.6] - 2025-10-08
 - Improved: Settings command now opens Workspace settings then focuses the relevant section; added command to open workspace settings JSON directly
 
+## [0.1.7] - 2025-10-08
+- Selecting a game profile now applies default script paths and compiler locations automatically
+- Reordered settings to surface per-game categories immediately after the game selector
+- Added regression test covering default profile application when changing games
+
+## [0.1.6] - 2025-10-08
+
 ## [0.1.5] - 2025-10-08
 - Added command: Create Default Game Profiles (seeds typical paths and compiler locations per game)
 

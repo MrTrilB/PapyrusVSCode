@@ -31,6 +31,8 @@ Set the compiler path and args in settings:
 - `papyrus.compiler.args`: Array of additional arguments (e.g. output folder)
 - `papyrus.compiler.cwd`: Working directory for the compiler (optional)
 
+> When you change the active game (status bar picker or the Settings UI), Papyrus Tools now seeds default script folders and compiler locations for that title automatically. Review the generated paths and adjust them if your installation lives elsewhere.
+
 Per-game overrides (recommended):
 
 - `papyrus.game`: Active game profile (Skyrim, SkyrimSE, SkyrimAE, Fallout4, Fallout76, Starfield)
@@ -85,6 +87,8 @@ Commands:
  - Papyrus: Export Current Game Profile
  - Papyrus: Import Game Profile
  - Papyrus: Create Default Game Profiles
+
+Selecting a game from the dropdown or running "Papyrus: Switch Game Profile" applies the default compiler location and script include folders for that game, making first-time setup a single click.
 
 ## Per-game settings examples
 

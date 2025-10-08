@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "your-name",
   "repository": {
     "type": "git",
@@ -24,8 +24,8 @@
     "onCommand:papyrus.rebuildIndex",
     "onCommand:papyrus.addScriptFolder",
     "onCommand:papyrus.autoDetectGamePaths",
-      "onCommand:papyrus.scanScriptsForDiagnostics",
-      "onCommand:papyrus.openCurrentGameSettings",
+    "onCommand:papyrus.scanScriptsForDiagnostics",
+    "onCommand:papyrus.openCurrentGameSettings",
     "onCommand:papyrus.exportCurrentProfile",
     "onCommand:papyrus.importProfile",
     "onCommand:papyrus.createDefaultProfiles",
@@ -167,37 +167,100 @@
           "type": "string",
           "enum": ["Skyrim", "SkyrimSE", "SkyrimAE", "Fallout4", "Fallout76", "Starfield"],
           "default": "Skyrim",
-          "description": "Active game profile to use for keywords and compiler settings."
+          "description": "Active game profile to use for Papyrus features and compiler settings.",
+          "markdownDescription": "Active game profile to use for Papyrus features and compiler settings. Selecting a game automatically applies default script paths and compiler locations for that title.",
+          "order": 0
+        },
+        "papyrus.skyrim": {
+          "type": "object",
+          "description": "Convenience defaults for Skyrim, SkyrimSE, and SkyrimAE.",
+          "markdownDescription": "Convenience defaults for **Skyrim**-family games. These values are pre-populated when you select a Skyrim profile.",
+          "default": {},
+          "order": 10,
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Skyrim scripts folders (typically Data/\\Scripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Skyrim." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Skyrim." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Skyrim compiler (optional)." }
+              }
+            }
+          }
+        },
+        "papyrus.fallout4": {
+          "type": "object",
+          "description": "Convenience defaults for Fallout 4.",
+          "markdownDescription": "Convenience defaults for **Fallout 4**. Values are pre-populated when you switch to the Fallout 4 profile.",
+          "default": {},
+          "order": 11,
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Fallout 4 scripts folders (typically Data/\\Scripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Fallout 4." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Fallout 4." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Fallout 4 compiler (optional)." }
+              }
+            }
+          }
+        },
+        "papyrus.starfield": {
+          "type": "object",
+          "description": "Convenience defaults for Starfield.",
+          "markdownDescription": "Convenience defaults for **Starfield**. Values are pre-populated when you switch to the Starfield profile.",
+          "default": {},
+          "order": 12,
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Starfield scripts folders (typically Data/\\Scripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Starfield." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Starfield." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Starfield compiler (optional)." }
+              }
+            }
+          }
         },
         "papyrus.compiler.path": {
           "type": "string",
           "default": "",
-          "description": "Full path to the Papyrus compiler executable (e.g. PapyrusCompiler.exe)."
+          "description": "Full path to the Papyrus compiler executable (e.g. PapyrusCompiler.exe).",
+          "order": 20
         },
         "papyrus.compiler.args": {
           "type": "array",
           "default": [],
-          "description": "Additional arguments to pass to the Papyrus compiler."
+          "description": "Additional arguments to pass to the Papyrus compiler.",
+          "order": 21
         },
         "papyrus.compiler.cwd": {
           "type": "string",
           "default": "",
-          "description": "Working directory to run the compiler in (optional)."
+          "description": "Working directory to run the compiler in (optional).",
+          "order": 22
         },
         "papyrus.compiler.includeFlag": {
           "type": "string",
           "default": "-i",
-          "description": "Compiler include flag used to pass script include paths (e.g. -i)."
+          "description": "Compiler include flag used to pass script include paths (e.g. -i).",
+          "order": 23
         },
         "papyrus.compiler.pathSeparator": {
           "type": "string",
           "default": ";",
-          "description": "Path list separator when passing multiple include paths (default ';')."
+          "description": "Path list separator when passing multiple include paths (default ';').",
+          "order": 24
         },
         "papyrus.games": {
           "type": "object",
           "description": "Per-game compiler settings. Keys: skyrim, skyrimse, skyrimae, fallout4, fallout76, starfield.",
+          "markdownDescription": "Advanced: raw per-game profile data backing the convenience categories. You usually do not need to edit this manually.",
           "default": {},
+          "order": 80,
           "properties": {
             "skyrim": {
               "type": "object",
@@ -285,58 +348,11 @@
             }
           }
         },
-        "papyrus.skyrim": {
-          "type": "object",
-          "description": "Convenience settings for Skyrim (applies to Skyrim, SkyrimSE, and SkyrimAE profiles).",
-          "default": {},
-          "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Skyrim scripts folders (typically Data/\u005cScripts/Source)." },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Skyrim." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Skyrim." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Skyrim compiler (optional)." }
-              }
-            }
-          }
-        },
-        "papyrus.fallout4": {
-          "type": "object",
-          "description": "Convenience settings for Fallout 4.",
-          "default": {},
-          "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Fallout 4 scripts folders (typically Data/\u005cScripts/Source)." },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Fallout 4." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Fallout 4." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Fallout 4 compiler (optional)." }
-              }
-            }
-          }
-        },
-        "papyrus.starfield": {
-          "type": "object",
-          "description": "Convenience settings for Starfield.",
-          "default": {},
-          "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Starfield scripts folders (typically Data/\u005cScripts/Source)." },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Starfield." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Starfield." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Starfield compiler (optional)." }
-              }
-            }
-          }
-        },
         "papyrus.autoDetect": {
           "type": "object",
           "description": "Auto-detection settings for game paths.",
           "default": {},
+          "order": 90,
           "properties": {
             "useLibraryFoldersVdf": {
               "type": "boolean",

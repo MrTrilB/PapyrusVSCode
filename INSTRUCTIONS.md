@@ -1,4 +1,4 @@
-# Papyrus Tools Workspace Instructions
+# Papyrus for BGS Workspace Instructions
 
 ## Prerequisites
 - Install Node.js 18 or newer.
@@ -34,6 +34,7 @@
 The extension supports Skyrim, SkyrimSE, SkyrimAE, Fallout4, Fallout76, and Starfield.
 
 1. Select the active profile via the status-bar picker or the command palette (`Papyrus: Switch Game Profile`).
+   - Switching the game now auto-populates default compiler locations and include folders for that title; confirm they match your install.
 2. Configure compiler settings:
    - `Papyrus: Configure Compiler Paths` to set per-game compiler executables and args.
    - `Papyrus: Configure Script Folders` or `Papyrus: Add Script Folder` to manage include paths.
