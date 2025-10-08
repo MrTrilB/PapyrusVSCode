@@ -14,7 +14,8 @@
   "sideEffects": false,
   "activationEvents": [
     "onCommand:papyrus.compileFile",
-    "onCommand:papyrus.switchGame"
+    "onCommand:papyrus.switchGame",
+    "onCommand:papyrus.configureCompilers"
   ],
   "contributes": {
     "languages": [
@@ -52,6 +53,10 @@
       {
         "command": "papyrus.switchGame",
         "title": "Papyrus: Switch Game Profile"
+      },
+      {
+        "command": "papyrus.configureCompilers",
+        "title": "Papyrus: Configure Compiler Paths"
       }
     ],
     "menus": {

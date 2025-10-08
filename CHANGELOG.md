@@ -10,3 +10,4 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 - Added compile command and settings
 - Added multi-game support (Skyrim/SE/AE, Fallout 4/76, Starfield)
 - Added status bar game selector and switch command
+ - Added configuration command to set per-game compiler paths

@@ -200,6 +200,43 @@ export function activate(context: vscode.ExtensionContext) {
     term.show();
   });
 
+  // Configure compilers command: prompts for known paths per installed games
+  const configureCompilersCmd = vscode.commands.registerCommand('papyrus.configureCompilers', async () => {
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+
+    // Helper to update a nested setting under papyrus.games
+    const updateGameCompiler = async (profileKey: string, pathValue: string) => {
+      const current = cfg.get<any>('games') || {};
+      const next = { ...current, [profileKey]: { ...(current[profileKey] || {}), compiler: { ...(current[profileKey]?.compiler || {}), path: pathValue } } };
+      await cfg.update('games', next, target);
+    };
+
+    // Ask to set Starfield compiler
+    const starfieldDefault = 'C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe';
+    const sfPath = await vscode.window.showInputBox({
+      title: 'Starfield Papyrus Compiler Path',
+      value: starfieldDefault,
+      prompt: 'Enter the full path to PapyrusCompiler.exe for Starfield (leave empty to skip)'
+    });
+    if (sfPath && sfPath.trim()) {
+      await updateGameCompiler('starfield', sfPath.trim());
+    }
+
+    // Ask to set Fallout 4 compiler
+    const fo4Default = 'C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe';
+    const fo4Path = await vscode.window.showInputBox({
+      title: 'Fallout 4 Papyrus Compiler Path',
+      value: fo4Default,
+      prompt: 'Enter the full path to PapyrusCompiler.exe for Fallout 4 (leave empty to skip)'
+    });
+    if (fo4Path && fo4Path.trim()) {
+      await updateGameCompiler('fallout4', fo4Path.trim());
+    }
+
+    vscode.window.showInformationMessage('Papyrus compiler paths updated (where provided).');
+  });
+
   // Switch game command
   const switchGameCmd = vscode.commands.registerCommand('papyrus.switchGame', async () => {
     const options: GameProfile[] = ['Skyrim', 'SkyrimSE', 'SkyrimAE', 'Fallout4', 'Fallout76', 'Starfield'];
@@ -225,6 +262,7 @@ export function activate(context: vscode.ExtensionContext) {
     symbolProvider,
     definitionProvider,
     compileCmd,
+    configureCompilersCmd,
     switchGameCmd,
     cfgChange,
     gameStatus

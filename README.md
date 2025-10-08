@@ -38,6 +38,20 @@ Switch profiles via the status bar or command "Papyrus: Switch Game Profile".
 
 Then run the command "Papyrus: Compile Current File" from the Command Palette or editor title.
 
+### Quick setup (Starfield / Fallout 4)
+
+Use the command "Papyrus: Configure Compiler Paths" to quickly set the per-game compiler paths.
+Defaults used (you can edit them if your paths differ):
+
+- Starfield: `C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe`
+- Fallout 4: `C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe`
+
+### Commands
+
+- Papyrus: Compile Current File
+- Papyrus: Switch Game Profile
+- Papyrus: Configure Compiler Paths
+
 ## Contributing
 PRs welcome for expanded grammar, LSP features, and integration with Papyrus compiler.
 
