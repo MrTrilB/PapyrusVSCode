@@ -18,7 +18,8 @@
     "onCommand:papyrus.configureCompilers",
     "onCommand:papyrus.configureScriptFolders",
     "onCommand:papyrus.rebuildIndex",
-    "onCommand:papyrus.addScriptFolder"
+    "onCommand:papyrus.addScriptFolder",
+    "onCommand:papyrus.autoDetectGamePaths"
   ],
   "contributes": {
     "languages": [
@@ -72,6 +73,10 @@
       {
         "command": "papyrus.addScriptFolder",
         "title": "Papyrus: Add Script Folder"
+      },
+      {
+        "command": "papyrus.autoDetectGamePaths",
+        "title": "Papyrus: Auto-Detect Game Paths"
       }
     ],
     "menus": {
@@ -89,6 +94,10 @@
         },
         {
           "command": "papyrus.switchGame",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.autoDetectGamePaths",
           "when": "true"
         }
       ]

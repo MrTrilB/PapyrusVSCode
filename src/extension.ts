@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import 'source-map-support/register';
 import * as fs from 'fs';
+import * as path from 'path';
 
 type GameProfile = 'Skyrim' | 'SkyrimSE' | 'SkyrimAE' | 'Fallout4' | 'Fallout76' | 'Starfield';
 
@@ -401,6 +402,146 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Papyrus compiler paths updated (where provided).');
   });
 
+  // Auto-detect game installations (Steam) and configure compiler/script paths
+  const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async () => {
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+
+    type Detected = { compilerPath?: string; scriptPaths: string[] };
+    const detected: Record<'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield', Detected> = {
+      skyrim: { scriptPaths: [] },
+      skyrimse: { scriptPaths: [] },
+      skyrimae: { scriptPaths: [] },
+      fallout4: { scriptPaths: [] },
+      fallout76: { scriptPaths: [] },
+      starfield: { scriptPaths: [] }
+    };
+
+    // Common Steam library locations to probe (keep small/fast)
+    const bases = [
+      'C:/Program Files (x86)/Steam/steamapps/common',
+      'C:/Program Files/Steam/steamapps/common',
+      'C:/SteamLibrary/steamapps/common',
+      'D:/SteamLibrary/steamapps/common',
+      'E:/SteamLibrary/steamapps/common',
+      'F:/SteamLibrary/steamapps/common'
+    ];
+
+    const gameDirs: Record<string, { profile: keyof typeof detected; names: string[] }[]> = {
+      // multiple potential folder names per title
+      base: [
+        { profile: 'skyrim', names: ['Skyrim'] },
+        { profile: 'skyrimse', names: ['Skyrim Special Edition'] },
+        { profile: 'skyrimae', names: ['Skyrim Special Edition'] }, // AE shares SE path
+        { profile: 'fallout4', names: ['Fallout 4'] },
+        { profile: 'fallout76', names: ['Fallout76', 'Fallout 76'] },
+        { profile: 'starfield', names: ['Starfield'] }
+      ]
+    } as any;
+
+    const findFirstExisting = (...candidatePaths: string[]): string | undefined => {
+      for (const p of candidatePaths) {
+        try {
+          if (fs.existsSync(p)) return p;
+        } catch {}
+      }
+      return undefined;
+    };
+
+    for (const baseRoot of bases) {
+      if (!fs.existsSync(baseRoot)) continue;
+      for (const entry of gameDirs.base) {
+        for (const dirName of entry.names) {
+          const gameRoot = path.join(baseRoot, dirName);
+          if (!fs.existsSync(gameRoot)) continue;
+          // Detect compiler path: try common subpaths
+          const compiler = findFirstExisting(
+            path.join(gameRoot, 'Papyrus Compiler', 'PapyrusCompiler.exe'),
+            path.join(gameRoot, 'Tools', 'Papyrus Compiler', 'PapyrusCompiler.exe')
+          );
+          if (compiler && !detected[entry.profile].compilerPath) {
+            detected[entry.profile].compilerPath = compiler;
+          }
+          // Detect script sources: prefer Data\Scripts\Source, fallback Data\Scripts
+          const scriptsSource = path.join(gameRoot, 'Data', 'Scripts', 'Source');
+          const scripts = path.join(gameRoot, 'Data', 'Scripts');
+          const toAdd = fs.existsSync(scriptsSource) ? scriptsSource : (fs.existsSync(scripts) ? scripts : undefined);
+          if (toAdd) {
+            const arr = detected[entry.profile].scriptPaths;
+            if (!arr.includes(toAdd)) arr.push(toAdd);
+          }
+        }
+      }
+    }
+
+    // Show a summary and let the user apply per-profile
+    const parts: string[] = [];
+    for (const [key, info] of Object.entries(detected)) {
+      const items: string[] = [];
+      if (info.compilerPath) items.push(`compiler: ${info.compilerPath}`);
+      if (info.scriptPaths.length) items.push(`scripts: ${info.scriptPaths.join('; ')}`);
+      if (items.length) parts.push(`${key}: ${items.join(' | ')}`);
+    }
+    if (!parts.length) {
+      vscode.window.showInformationMessage('No game installations detected in common Steam library locations.');
+      return;
+    }
+
+    const confirm = await vscode.window.showQuickPick([
+      { label: 'Apply all detected paths', description: parts.join('\n'), value: 'all' },
+      { label: 'Review per game (interactive)', value: 'interactive' },
+      { label: 'Cancel', value: 'cancel' }
+    ], { placeHolder: 'Apply detected Papyrus compiler and script paths?' });
+    if (!confirm || confirm.value === 'cancel') return;
+
+    const currentGames = cfg.get<any>('games') || {};
+
+    const applyProfile = async (profileKey: keyof typeof detected) => {
+      const d = detected[profileKey];
+      if (!d.compilerPath && d.scriptPaths.length === 0) return;
+      const next = { ...currentGames };
+      const prev = next[profileKey] || {};
+      const prevCompiler = prev.compiler || {};
+      const prevPaths: string[] = Array.isArray(prev.scriptPaths) ? [...prev.scriptPaths] : [];
+      if (d.compilerPath) {
+        next[profileKey] = {
+          ...prev,
+          compiler: { ...prevCompiler, path: d.compilerPath }
+        };
+      }
+      if (d.scriptPaths.length) {
+        const merged = [...prevPaths];
+        for (const p of d.scriptPaths) if (!merged.includes(p)) merged.push(p);
+        next[profileKey] = { ...(next[profileKey] || prev), scriptPaths: merged };
+      }
+      await cfg.update('games', next, target);
+    };
+
+    if (confirm.value === 'all') {
+      for (const key of Object.keys(detected) as (keyof typeof detected)[]) {
+        await applyProfile(key);
+      }
+      await buildIndex();
+      vscode.window.showInformationMessage('Applied all detected Papyrus paths.');
+      return;
+    }
+
+    // Interactive per-game review
+    for (const key of Object.keys(detected) as (keyof typeof detected)[]) {
+      const d = detected[key];
+      if (!d.compilerPath && d.scriptPaths.length === 0) continue;
+      const choice = await vscode.window.showQuickPick([
+        { label: `Apply ${key}`, description: [d.compilerPath ? `compiler: ${d.compilerPath}` : '', d.scriptPaths.length ? `scripts: ${d.scriptPaths.join('; ')}` : ''].filter(Boolean).join(' | '), value: 'apply' },
+        { label: 'Skip', value: 'skip' }
+      ], { placeHolder: `Apply detected paths for ${key}?` });
+      if (choice && choice.value === 'apply') {
+        await applyProfile(key);
+      }
+    }
+    await buildIndex();
+    vscode.window.showInformationMessage('Auto-detection complete. Applied selected Papyrus paths.');
+  });
+
   // Switch game command
   const switchGameCmd = vscode.commands.registerCommand('papyrus.switchGame', async () => {
     const options: GameProfile[] = ['Skyrim', 'SkyrimSE', 'SkyrimAE', 'Fallout4', 'Fallout76', 'Starfield'];
@@ -431,6 +572,7 @@ export function activate(context: vscode.ExtensionContext) {
   addScriptFolderCmd,
     configureScriptFoldersCmd,
     configureCompilersCmd,
+    autoDetectCmd,
     switchGameCmd,
     cfgChange,
     gameStatus

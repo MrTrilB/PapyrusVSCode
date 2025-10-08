@@ -60,6 +60,7 @@ Commands:
 - Papyrus: Configure Script Folders – prompts for Starfield/FO4 script directories
 - Papyrus: Add Script Folder – pick any folder to add to the active game profile
 - Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
+ - Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim/SE/AE/FO4/FO76/Starfield and offers to apply detected compiler/script paths
 
 ### Commands
 
@@ -69,6 +70,7 @@ Commands:
 - Papyrus: Configure Script Folders
 - Papyrus: Add Script Folder
 - Papyrus: Rebuild Script Index
+ - Papyrus: Auto-Detect Game Paths
 
 ## Contributing
 PRs welcome for expanded grammar, LSP features, and integration with Papyrus compiler.

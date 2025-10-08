@@ -14,3 +14,4 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
  - Added per-game script folders and include flag/separator settings
  - Added script indexer, workspace symbols, and cross-script definition fallback
  - Added commands to configure/add script folders and rebuild script index
+ - Added auto-detect command to find common Steam installs and apply compiler/script paths
