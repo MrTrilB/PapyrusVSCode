@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "publisher": "your-name",
   "repository": {
     "type": "git",
@@ -25,7 +25,11 @@
     "onCommand:papyrus.addScriptFolder",
     "onCommand:papyrus.autoDetectGamePaths",
       "onCommand:papyrus.scanScriptsForDiagnostics",
-      "onCommand:papyrus.openCurrentGameSettings"
+      "onCommand:papyrus.openCurrentGameSettings",
+    "onCommand:papyrus.exportCurrentProfile",
+    "onCommand:papyrus.importProfile",
+    "onCommand:papyrus.createDefaultProfiles",
+    "onCommand:papyrus.openWorkspaceSettingsJson"
   ],
   "contributes": {
     "languages": [
@@ -91,6 +95,22 @@
       {
         "command": "papyrus.openCurrentGameSettings",
         "title": "Papyrus: Open Current Game Settings"
+      },
+      {
+        "command": "papyrus.openWorkspaceSettingsJson",
+        "title": "Papyrus: Open Workspace Settings (JSON)"
+      },
+      {
+        "command": "papyrus.exportCurrentProfile",
+        "title": "Papyrus: Export Current Game Profile"
+      },
+      {
+        "command": "papyrus.importProfile",
+        "title": "Papyrus: Import Game Profile"
+      },
+      {
+        "command": "papyrus.createDefaultProfiles",
+        "title": "Papyrus: Create Default Game Profiles"
       }
     ],
     "menus": {
@@ -120,6 +140,22 @@
         },
         {
           "command": "papyrus.openCurrentGameSettings",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.openWorkspaceSettingsJson",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.exportCurrentProfile",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.importProfile",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.createDefaultProfiles",
           "when": "true"
         }
       ]

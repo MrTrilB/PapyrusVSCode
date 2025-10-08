@@ -2,6 +2,25 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [0.1.6] - 2025-10-08
+- Improved: Settings command now opens Workspace settings then focuses the relevant section; added command to open workspace settings JSON directly
+
+## [0.1.5] - 2025-10-08
+- Added command: Create Default Game Profiles (seeds typical paths and compiler locations per game)
+
+## [0.1.4] - 2025-10-08
+- Added command: Import Game Profile (JSON); merges into per-game settings and updates top-level convenience
+
+## [0.1.3] - 2025-10-08
+- Added command: Export Current Game Profile (JSON) and documented in README
+
+## [0.1.2] - 2025-10-08
+- README updates with per-game settings examples and auto-detect per-game toggles
+- Added command: Open Current Game Settings (status bar gear)
+
+## [0.1.1] - 2025-10-08
+- Packaging fixes (added repository and LICENSE) and minor stability improvements
+
 ## [0.1.0] - 2025-10-08
 - Initial release with syntax, snippets, completions, and hovers
 - Added webpack bundling

@@ -530,7 +530,153 @@ export function activate(context: vscode.ExtensionContext) {
           return 'papyrus';
       }
     })();
+    // First switch to Workspace settings tab, then apply filter query for our section
+    await vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
     await vscode.commands.executeCommand('workbench.action.openSettings', tl);
+  });
+
+  // Open workspace settings JSON directly for transparency
+  const openWorkspaceSettingsJsonCmd = vscode.commands.registerCommand('papyrus.openWorkspaceSettingsJson', async () => {
+    await vscode.commands.executeCommand('workbench.action.openWorkspaceSettingsFile');
+  });
+
+  // Export current game profile (merged) to JSON
+  const exportCurrentProfileCmd = vscode.commands.registerCommand('papyrus.exportCurrentProfile', async () => {
+    const g = getGame();
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const merged = getMergedGameConfig(cfg, g);
+    const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
+    const pathSeparator: string = cfg.get<string>('compiler.pathSeparator') || ';';
+    const payload = {
+      game: g,
+      scriptPaths: merged.scriptPaths || [],
+      compiler: {
+        path: merged.compiler?.path || '',
+        args: merged.compiler?.args || [],
+        cwd: merged.compiler?.cwd || ''
+      },
+      includeFlag,
+      pathSeparator
+    };
+    const defaultFileName = `papyrus-profile-${g}.json`;
+    const uri = await vscode.window.showSaveDialog({
+      saveLabel: 'Export',
+      filters: { 'JSON': ['json'] },
+      defaultUri: vscode.Uri.file(path.join((vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd()), defaultFileName))
+    });
+    if (!uri) return;
+    try {
+      const json = JSON.stringify(payload, null, 2);
+      fs.writeFileSync(uri.fsPath, json, 'utf8');
+      vscode.window.showInformationMessage(`Papyrus: Exported profile for ${g} to ${uri.fsPath}`);
+    } catch (e: any) {
+      vscode.window.showErrorMessage(`Papyrus: Failed to export profile: ${e?.message || e}`);
+    }
+  });
+
+  // Import game profile from JSON
+  const importProfileCmd = vscode.commands.registerCommand('papyrus.importProfile', async () => {
+    try {
+      const pick = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: { 'JSON': ['json'] },
+        openLabel: 'Import'
+      });
+      if (!pick || pick.length === 0) return;
+      const filePath = pick[0].fsPath;
+      const content = fs.readFileSync(filePath, 'utf8');
+      let data: any;
+      try {
+        data = JSON.parse(content);
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`Papyrus: Failed to parse JSON: ${e?.message || e}`);
+        return;
+      }
+      // Validate basic shape
+      const game = (data?.game as GameProfile) || getGame();
+      const validGames: GameProfile[] = ['Skyrim','SkyrimSE','SkyrimAE','Fallout4','Fallout76','Starfield'];
+      if (!validGames.includes(game)) {
+        vscode.window.showErrorMessage('Papyrus: Invalid or missing "game" in profile JSON.');
+        return;
+      }
+      const scripts: string[] = Array.isArray(data?.scriptPaths) ? data.scriptPaths.filter((x: any) => typeof x === 'string' && x.trim()) : [];
+      const compiler = data?.compiler || {};
+      const includeFlag = typeof data?.includeFlag === 'string' ? data.includeFlag : undefined;
+      const pathSeparator = typeof data?.pathSeparator === 'string' ? data.pathSeparator : undefined;
+
+      const cfg = vscode.workspace.getConfiguration('papyrus');
+      const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+
+      // Determine profile key and top-level key
+      const profileKey = (game.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield');
+      const tlKey = ((): 'skyrim'|'fallout4'|'starfield'|undefined => {
+        if (game === 'Starfield') return 'starfield';
+        if (game === 'Fallout4') return 'fallout4';
+        if (game === 'Skyrim' || game === 'SkyrimSE' || game === 'SkyrimAE') return 'skyrim';
+        return undefined;
+      })();
+
+      // Merge into papyrus.games[profileKey]
+      const games = cfg.get<any>('games') || {};
+      const prev = games[profileKey] || {};
+      const mergedPaths: string[] = Array.isArray(prev.scriptPaths) ? [...prev.scriptPaths] : [];
+      for (const p of scripts) { if (!mergedPaths.includes(p)) mergedPaths.push(p); }
+      const nextCompiler = {
+        ...(prev.compiler || {}),
+        ...(typeof compiler?.path === 'string' ? { path: compiler.path } : {}),
+        ...(Array.isArray(compiler?.args) ? { args: compiler.args } : {}),
+        ...(typeof compiler?.cwd === 'string' ? { cwd: compiler.cwd } : {})
+      };
+      const nextGames = {
+        ...games,
+        [profileKey]: {
+          ...(games[profileKey] || {}),
+          ...(mergedPaths.length ? { scriptPaths: mergedPaths } : {}),
+          ...(Object.keys(nextCompiler).length ? { compiler: nextCompiler } : {})
+        }
+      };
+      await cfg.update('games', nextGames, target);
+
+      // Update top-level convenience if applicable
+      if (tlKey) {
+        const tl = cfg.get<any>(tlKey) || {};
+        const tlPaths: string[] = Array.isArray(tl.scriptPaths) ? [...tl.scriptPaths] : [];
+        for (const p of scripts) { if (!tlPaths.includes(p)) tlPaths.push(p); }
+        const tlCompiler = {
+          ...(tl.compiler || {}),
+          ...(typeof compiler?.path === 'string' ? { path: compiler.path } : {}),
+          ...(Array.isArray(compiler?.args) ? { args: compiler.args } : {}),
+          ...(typeof compiler?.cwd === 'string' ? { cwd: compiler.cwd } : {})
+        };
+        const tlNext = {
+          ...tl,
+          ...(tlPaths.length ? { scriptPaths: tlPaths } : {}),
+          ...(Object.keys(tlCompiler).length ? { compiler: tlCompiler } : {})
+        };
+        await cfg.update(tlKey, tlNext, target);
+      }
+
+      // Optionally update global includeFlag and pathSeparator
+      if (includeFlag) await cfg.update('compiler.includeFlag', includeFlag, target);
+      if (pathSeparator) await cfg.update('compiler.pathSeparator', pathSeparator, target);
+
+      // Optionally set active game to imported game
+      const setActive = await vscode.window.showQuickPick([
+        { label: `Set active profile to ${game}`, value: 'yes' },
+        { label: 'Keep current active profile', value: 'no' }
+      ], { placeHolder: 'Apply imported game as active profile?' });
+      if (setActive?.value === 'yes') {
+        await cfg.update('game', game, target);
+        updateGameStatus();
+      }
+
+      await buildIndex();
+      vscode.window.showInformationMessage(`Papyrus: Imported profile for ${game}.`);
+    } catch (e: any) {
+      vscode.window.showErrorMessage(`Papyrus: Import failed: ${e?.message || e}`);
+    }
   });
 
   // Auto-detect game installations (Steam) and configure compiler/script paths
@@ -757,6 +903,97 @@ export function activate(context: vscode.ExtensionContext) {
     return detected;
   });
 
+  // Seed default profiles for each game with typical paths
+  const createDefaultProfilesCmd = vscode.commands.registerCommand('papyrus.createDefaultProfiles', async () => {
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+
+    // Baseline defaults (these may not exist on disk; they are intended as sensible starting points)
+    const defaults = {
+      skyrim: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Skyrim/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Skyrim/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Skyrim/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Skyrim/Papyrus Compiler/PapyrusCompiler.exe'
+      },
+      skyrimse: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Skyrim Special Edition/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Skyrim Special Edition/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition/Papyrus Compiler/PapyrusCompiler.exe'
+      },
+      skyrimae: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Skyrim Special Edition/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Skyrim Special Edition/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition/Papyrus Compiler/PapyrusCompiler.exe'
+      },
+      fallout4: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Fallout 4/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Fallout 4/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Fallout 4/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Fallout 4/Papyrus Compiler/PapyrusCompiler.exe'
+      },
+      fallout76: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Fallout76/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Fallout76/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Fallout76/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Fallout76/Papyrus Compiler/PapyrusCompiler.exe'
+      },
+      starfield: {
+        scriptPaths: [
+          'C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/Scripts/Source',
+          'C:/Program Files/Steam/steamapps/common/Starfield/Data/Scripts/Source',
+          'C:/SteamLibrary/steamapps/common/Starfield/Data/Scripts/Source'
+        ],
+        compilerPath: 'C:/Program Files (x86)/Steam/steamapps/common/Starfield/Tools/Papyrus Compiler/PapyrusCompiler.exe'
+      }
+    } as const;
+
+    const games = cfg.get<any>('games') || {};
+    const next: any = { ...games };
+    const mergeArr = (a: string[] = [], b: string[] = []) => {
+      const out = [...a];
+      for (const p of b) if (p && !out.includes(p)) out.push(p);
+      return out;
+    };
+
+    // Seed/merge for each profile
+    for (const key of Object.keys(defaults) as Array<keyof typeof defaults>) {
+      const prev = games[key] || {};
+      const combinedPaths = mergeArr(prev.scriptPaths || [], defaults[key].scriptPaths as unknown as string[]);
+      const compiler = { ...(prev.compiler || {}), path: (prev.compiler?.path || defaults[key].compilerPath) };
+      next[key] = { ...prev, scriptPaths: combinedPaths, compiler };
+
+      // Update top-level convenience where applicable
+      let tlKey: 'skyrim'|'fallout4'|'starfield'|undefined;
+      if (key === 'starfield') tlKey = 'starfield';
+      else if (key === 'fallout4') tlKey = 'fallout4';
+      else if (key === 'skyrim' || key === 'skyrimse' || key === 'skyrimae') tlKey = 'skyrim';
+      if (tlKey) {
+        const tl = cfg.get<any>(tlKey) || {};
+        const tlPaths = mergeArr(tl.scriptPaths || [], defaults[key].scriptPaths as unknown as string[]);
+        const tlCompiler = { ...(tl.compiler || {}), path: (tl.compiler?.path || defaults[key].compilerPath) };
+        const tlNext = { ...tl, scriptPaths: tlPaths, compiler: tlCompiler };
+        await cfg.update(tlKey, tlNext, target);
+      }
+    }
+
+    await cfg.update('games', next, target);
+    await buildIndex();
+    vscode.window.showInformationMessage('Papyrus: Default game profiles created/merged with current settings.');
+  });
+
   // Switch game command
   const switchGameCmd = vscode.commands.registerCommand('papyrus.switchGame', async () => {
     const options: GameProfile[] = ['Skyrim', 'SkyrimSE', 'SkyrimAE', 'Fallout4', 'Fallout76', 'Starfield'];
@@ -794,6 +1031,10 @@ export function activate(context: vscode.ExtensionContext) {
     gameStatus,
     settingsStatus,
     openCurrentGameSettingsCmd
+    ,exportCurrentProfileCmd
+    ,importProfileCmd
+    ,openWorkspaceSettingsJsonCmd
+    ,createDefaultProfilesCmd
   );
 }
 

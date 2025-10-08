@@ -81,8 +81,26 @@ Commands:
 - Papyrus: Add Script Folder
 - Papyrus: Rebuild Script Index
  - Papyrus: Auto-Detect Game Paths
+ - Papyrus: Open Current Game Settings
+ - Papyrus: Export Current Game Profile
+ - Papyrus: Import Game Profile
+ - Papyrus: Create Default Game Profiles
 
 ## Per-game settings examples
+
+### Exporting and importing profiles
+
+You can export your current game profile to JSON and re-import later or on another machine.
+
+- Export: "Papyrus: Export Current Game Profile" creates a file like `papyrus-profile-<Game>.json` containing:
+	- `game`, `scriptPaths`, `compiler` (path|args|cwd), `includeFlag`, `pathSeparator`
+- Import: "Papyrus: Import Game Profile" merges that JSON into `papyrus.games.<profile>` and updates top-level convenience settings when applicable (Starfield/Fallout 4/Skyrim).
+	- Optionally sets the imported game as the active profile.
+	- Rebuilds the index after applying changes.
+
+	### Default profiles
+
+	Use "Papyrus: Create Default Game Profiles" to seed sensible starting paths and compiler locations for all supported games. These are typical Steam-based defaults (they may not exist on your machine), and are merged with your current settings and top-level per-game convenience settings.
 
 The following convenience settings are merged with `papyrus.games.*` and global defaults.
 
