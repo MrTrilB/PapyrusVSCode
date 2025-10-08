@@ -242,6 +242,11 @@
               "items": { "type": "string" },
               "default": [],
               "description": "Additional base library paths. You can provide either the library root, 'steamapps', or 'steamapps/common'."
+            },
+            "includeBothScriptPaths": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, include both Data\\Scripts\\Source and Data\\Scripts if both exist. Otherwise prefer Source only."
             }
           }
         }

@@ -406,9 +406,10 @@ export function activate(context: vscode.ExtensionContext) {
   const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async () => {
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     const cfg = vscode.workspace.getConfiguration('papyrus');
-    const autoCfg = (cfg.get<any>('autoDetect') || {});
-    const useVdf: boolean = autoCfg.useLibraryFoldersVdf !== false; // default true
-    const additionalBasePaths: string[] = Array.isArray(autoCfg.additionalBasePaths) ? autoCfg.additionalBasePaths : [];
+  const autoCfg = (cfg.get<any>('autoDetect') || {});
+  const useVdf: boolean = autoCfg.useLibraryFoldersVdf !== false; // default true
+  const additionalBasePaths: string[] = Array.isArray(autoCfg.additionalBasePaths) ? autoCfg.additionalBasePaths : [];
+  const includeBothScriptPaths: boolean = !!autoCfg.includeBothScriptPaths;
 
     type Detected = { compilerPath?: string; scriptPaths: string[] };
     const detected: Record<'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield', Detected> = {
@@ -444,6 +445,14 @@ export function activate(context: vscode.ExtensionContext) {
     ].forEach(pushCommon);
     // User-configured additional bases
     for (const p of additionalBasePaths) pushCommon(p);
+
+    // Add default GOG Galaxy and Epic Games roots (games live directly under these)
+    const extraRoots = [
+      'C:/Program Files (x86)/GOG Galaxy/Games',
+      'C:/GOG Games', 'D:/GOG Games', 'E:/GOG Games', 'F:/GOG Games',
+      'C:/Program Files/Epic Games', 'D:/Program Files/Epic Games', 'E:/Program Files/Epic Games', 'F:/Program Files/Epic Games'
+    ];
+    for (const r of extraRoots) baseCommonPaths.add(path.normalize(r.replace(/\\/g, '/')));
 
     // Try to parse Steam libraryfolders.vdf for additional libraries
     const tryRead = (p: string): string | undefined => {
@@ -522,13 +531,17 @@ export function activate(context: vscode.ExtensionContext) {
           if (compiler && !detected[entry.profile].compilerPath) {
             detected[entry.profile].compilerPath = compiler;
           }
-          // Detect script sources: prefer Data\Scripts\Source, fallback Data\Scripts
+          // Detect script sources: prefer Data\Scripts\Source; optionally include both
           const scriptsSource = path.join(gameRoot, 'Data', 'Scripts', 'Source');
           const scripts = path.join(gameRoot, 'Data', 'Scripts');
-          const toAdd = fs.existsSync(scriptsSource) ? scriptsSource : (fs.existsSync(scripts) ? scripts : undefined);
-          if (toAdd) {
-            const arr = detected[entry.profile].scriptPaths;
-            if (!arr.includes(toAdd)) arr.push(toAdd);
+          const arr = detected[entry.profile].scriptPaths;
+          const srcExists = fs.existsSync(scriptsSource);
+          const scriptsExists = fs.existsSync(scripts);
+          if (srcExists) {
+            if (!arr.includes(scriptsSource)) arr.push(scriptsSource);
+            if (includeBothScriptPaths && scriptsExists && !arr.includes(scripts)) arr.push(scripts);
+          } else if (scriptsExists) {
+            if (!arr.includes(scripts)) arr.push(scripts);
           }
         }
       }

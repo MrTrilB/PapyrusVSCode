@@ -64,6 +64,10 @@ Commands:
 	 - Settings:
 		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
 		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
+		 - `papyrus.autoDetect.includeBothScriptPaths` (default false): when enabled, include both `Data\Scripts\Source` and `Data\Scripts` if both exist
+	 - Also probes typical GOG/Epic paths (games under these roots):
+		 - GOG: `C:\Program Files (x86)\GOG Galaxy\Games`, `C:\GOG Games`, `D:\GOG Games`, `E:\GOG Games`, `F:\GOG Games`
+		 - Epic: `C:\Program Files\Epic Games` (plus D/E/F variants)
 
 ### Commands
 
