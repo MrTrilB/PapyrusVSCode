@@ -65,6 +65,9 @@ Commands:
 		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
 		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
 		 - `papyrus.autoDetect.includeBothScriptPaths` (default false): when enabled, include both `Data\Scripts\Source` and `Data\Scripts` if both exist
+	 - Per-game checkboxes (default true):
+		 - `papyrus.autoDetect.enableSkyrim`, `papyrus.autoDetect.enableSkyrimSE`, `papyrus.autoDetect.enableSkyrimAE`
+		 - `papyrus.autoDetect.enableFallout4`, `papyrus.autoDetect.enableFallout76`, `papyrus.autoDetect.enableStarfield`
 	 - Also probes typical GOG/Epic paths (games under these roots):
 		 - GOG: `C:\Program Files (x86)\GOG Galaxy\Games`, `C:\GOG Games`, `D:\GOG Games`, `E:\GOG Games`, `F:\GOG Games`
 		 - Epic: `C:\Program Files\Epic Games` (plus D/E/F variants)
@@ -78,6 +81,61 @@ Commands:
 - Papyrus: Add Script Folder
 - Papyrus: Rebuild Script Index
  - Papyrus: Auto-Detect Game Paths
+
+## Per-game settings examples
+
+The following convenience settings are merged with `papyrus.games.*` and global defaults.
+
+Example: Starfield
+
+```
+{
+	"papyrus.starfield": {
+		"scriptPaths": [
+			"C:\\SteamLibrary\\steamapps\\common\\Starfield\\Data\\Scripts\\Source"
+		],
+		"compiler": {
+			"path": "C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe",
+			"args": [],
+			"cwd": ""
+		}
+	}
+}
+```
+
+Example: Fallout 4
+
+```
+{
+	"papyrus.fallout4": {
+		"scriptPaths": [
+			"C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts\\Source"
+		],
+		"compiler": {
+			"path": "C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe",
+			"args": [],
+			"cwd": ""
+		}
+	}
+}
+```
+
+Example: Skyrim/SE/AE
+
+```
+{
+	"papyrus.skyrim": {
+		"scriptPaths": [
+			"C:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Data\\Scripts\\Source"
+		],
+		"compiler": {
+			"path": "C:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Papyrus Compiler\\PapyrusCompiler.exe",
+			"args": [],
+			"cwd": ""
+		}
+	}
+}
+```
 
 ## Contributing
 PRs welcome for expanded grammar, LSP features, and integration with Papyrus compiler.

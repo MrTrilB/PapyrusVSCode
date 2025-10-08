@@ -46,6 +46,40 @@ export function activate(context: vscode.ExtensionContext) {
   };
   updateGameStatus();
 
+  // Status bar: quick open settings for current game
+  const settingsStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  settingsStatus.name = 'Papyrus Settings';
+  settingsStatus.text = '$(gear)';
+  settingsStatus.tooltip = 'Open Papyrus settings for current game';
+  settingsStatus.command = 'papyrus.openCurrentGameSettings';
+  settingsStatus.show();
+
+  // Settings helpers: merge top-level per-game settings with papyrus.games
+  const gameToProfileKey = (g: GameProfile): 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield' => (g.toLowerCase() as any);
+  const topLevelKeyForGame = (g: GameProfile): 'skyrim'|'fallout4'|'starfield'|undefined => {
+    if (g === 'Starfield') return 'starfield';
+    if (g === 'Fallout4') return 'fallout4';
+    if (g === 'Skyrim' || g === 'SkyrimSE' || g === 'SkyrimAE') return 'skyrim';
+    return undefined;
+  };
+  const getMergedGameConfig = (cfg: vscode.WorkspaceConfiguration, g: GameProfile) => {
+    const gKey = gameToProfileKey(g);
+    const tlKey = topLevelKeyForGame(g);
+    const gamesObj = cfg.get<any>('games') || {};
+    const per = gamesObj[gKey] || {};
+    const top = tlKey ? (cfg.get<any>(tlKey) || {}) : {};
+    const scriptPaths: string[] = [];
+    const addAll = (arr?: string[]) => { if (Array.isArray(arr)) for (const p of arr) if (p && !scriptPaths.includes(p)) scriptPaths.push(p); };
+    addAll(top.scriptPaths);
+    addAll(per.scriptPaths);
+    const compiler = {
+      path: (top.compiler?.path) || (per.compiler?.path) || cfg.get<string>('compiler.path') || '',
+      args: (top.compiler?.args) || (per.compiler?.args) || cfg.get<string[]>('compiler.args') || [],
+      cwd: (top.compiler?.cwd) || (per.compiler?.cwd) || cfg.get<string>('compiler.cwd') || ''
+    };
+    return { scriptPaths, compiler };
+  };
+
   // --- Simple Script Indexer ---
   type ScriptIndexEntry = {
     scriptName: string;
@@ -82,9 +116,8 @@ export function activate(context: vscode.ExtensionContext) {
     scriptIndex = new Map();
     const cfg = vscode.workspace.getConfiguration('papyrus');
     const g = getGame();
-    const key = g.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
-    const gamesCfg = cfg.get<any>('games') || {};
-    const folders: string[] = (gamesCfg[key]?.scriptPaths as string[] | undefined) || [];
+    const merged = getMergedGameConfig(cfg, g);
+    const folders: string[] = merged.scriptPaths || [];
     const globPatterns = folders.map(f => new vscode.RelativePattern(vscode.Uri.file(f).fsPath, '**/*.psc'));
     for (const pat of globPatterns) {
       const uris = await vscode.workspace.findFiles(pat, '**/node_modules/**');
@@ -246,32 +279,39 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Basic diagnostics: block balance for If/EndIf and While/EndWhile
   const diagCollection = vscode.languages.createDiagnosticCollection('papyrus');
-  const validate = (doc: vscode.TextDocument) => {
-    if (doc.languageId !== 'papyrus') return;
+  const computeBlockDiagnostics = (lines: string[]): vscode.Diagnostic[] => {
     const diags: vscode.Diagnostic[] = [];
     let ifCount = 0;
     let whileCount = 0;
-    for (let i = 0; i < doc.lineCount; i++) {
-      const text = doc.lineAt(i).text.replace(/\/\/.*$/, ''); // strip line comment
+    for (let i = 0; i < lines.length; i++) {
+      const text = lines[i].replace(/\/\/.*$/, '');
       if (/\bIf\b/i.test(text)) ifCount++;
       if (/\bEndIf\b/i.test(text)) ifCount--;
       if (/\bWhile\b/i.test(text)) whileCount++;
       if (/\bEndWhile\b/i.test(text)) whileCount--;
       if (ifCount < 0) {
-        diags.push(new vscode.Diagnostic(new vscode.Range(i, 0, i, text.length), 'Unexpected EndIf without matching If', vscode.DiagnosticSeverity.Error));
+        diags.push(new vscode.Diagnostic(new vscode.Range(i, 0, i, Math.max(0, text.length)), 'Unexpected EndIf without matching If', vscode.DiagnosticSeverity.Error));
         ifCount = 0;
       }
       if (whileCount < 0) {
-        diags.push(new vscode.Diagnostic(new vscode.Range(i, 0, i, text.length), 'Unexpected EndWhile without matching While', vscode.DiagnosticSeverity.Error));
+        diags.push(new vscode.Diagnostic(new vscode.Range(i, 0, i, Math.max(0, text.length)), 'Unexpected EndWhile without matching While', vscode.DiagnosticSeverity.Error));
         whileCount = 0;
       }
     }
     if (ifCount > 0) {
-      diags.push(new vscode.Diagnostic(new vscode.Range(doc.lineCount - 1, 0, doc.lineCount - 1, 0), 'Missing EndIf', vscode.DiagnosticSeverity.Error));
+      diags.push(new vscode.Diagnostic(new vscode.Range(Math.max(0, lines.length - 1), 0, Math.max(0, lines.length - 1), 0), 'Missing EndIf', vscode.DiagnosticSeverity.Error));
     }
     if (whileCount > 0) {
-      diags.push(new vscode.Diagnostic(new vscode.Range(doc.lineCount - 1, 0, doc.lineCount - 1, 0), 'Missing EndWhile', vscode.DiagnosticSeverity.Error));
+      diags.push(new vscode.Diagnostic(new vscode.Range(Math.max(0, lines.length - 1), 0, Math.max(0, lines.length - 1), 0), 'Missing EndWhile', vscode.DiagnosticSeverity.Error));
     }
+    return diags;
+  };
+
+  const validate = (doc: vscode.TextDocument) => {
+    if (doc.languageId !== 'papyrus') return;
+    const lines: string[] = [];
+    for (let i = 0; i < doc.lineCount; i++) lines.push(doc.lineAt(i).text);
+    const diags = computeBlockDiagnostics(lines);
     diagCollection.set(doc.uri, diags);
   };
   context.subscriptions.push(diagCollection);
@@ -279,6 +319,68 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(validate));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => validate(e.document)));
   context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(doc => diagCollection.delete(doc.uri)));
+
+
+  // Scan command: walk configured script paths and produce diagnostics for each file
+  const scanScriptsCmd = vscode.commands.registerCommand('papyrus.scanScriptsForDiagnostics', async () => {
+    const out = vscode.window.createOutputChannel('Papyrus Scan');
+    out.clear();
+    out.appendLine('Papyrus scan started...');
+  const cfg = vscode.workspace.getConfiguration('papyrus');
+  const game = getGame();
+  const merged = getMergedGameConfig(cfg, game);
+  const scriptPaths: string[] = merged.scriptPaths || [];
+    if (scriptPaths.length === 0) {
+      out.appendLine('No scriptPaths configured for current profile. Configure script folders or run Auto-Detect first.');
+      out.show(true);
+      vscode.window.showWarningMessage('Papyrus: No script paths configured for current profile.');
+      return;
+    }
+    let filesScanned = 0;
+    let filesWithIssues = 0;
+    const issues: { uri: vscode.Uri; diag: vscode.Diagnostic }[] = [];
+    const walk = (dir: string) => {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const ent of entries) {
+          const full = path.join(dir, ent.name);
+          if (ent.isDirectory()) {
+            // skip node_modules and hidden
+            if (ent.name === 'node_modules' || ent.name.startsWith('.')) continue;
+            walk(full);
+          } else if (ent.isFile() && /\.psc$/i.test(ent.name)) {
+            try {
+              const content = fs.readFileSync(full, 'utf8');
+              const lines = content.split(/\r?\n/);
+              const diags = computeBlockDiagnostics(lines);
+              const uri = vscode.Uri.file(full);
+              if (diags.length > 0) {
+                filesWithIssues++;
+                diagCollection.set(uri, diags);
+                diags.forEach(d => issues.push({ uri, diag: d }));
+              } else {
+                // clear any previous diagnostics for this file
+                diagCollection.delete(uri);
+              }
+              filesScanned++;
+            } catch {}
+          }
+        }
+      } catch {}
+    };
+    for (const root of scriptPaths) walk(root);
+    out.appendLine(`Scan complete. Files scanned: ${filesScanned}. Files with issues: ${filesWithIssues}.`);
+    for (const it of issues) {
+      const pos = it.diag.range.start;
+      out.appendLine(`${it.uri.fsPath}:${pos.line + 1}:${pos.character + 1} - ${it.diag.message}`);
+    }
+    out.show(true);
+    if (filesWithIssues > 0) {
+      vscode.window.showWarningMessage(`Papyrus scan found issues in ${filesWithIssues} file(s). See Problems and 'Papyrus Scan' output.`);
+    } else {
+      vscode.window.showInformationMessage('Papyrus scan found no issues.');
+    }
+  });
 
   // Compile command
   const compileCmd = vscode.commands.registerCommand('papyrus.compileFile', async () => {
@@ -295,18 +397,15 @@ export function activate(context: vscode.ExtensionContext) {
     await doc.save();
     const cfg = vscode.workspace.getConfiguration('papyrus');
     const game = getGame();
-    const key = game.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
-    // Prefer per-game compiler settings, fallback to global
-  const gamesCfg = cfg.get<any>('games') || {};
-  const perGame = (gamesCfg[key]?.compiler) || {};
-  const compilerPath: string = perGame.path || cfg.get<string>('compiler.path') || '';
-  const args: string[] = perGame.args || cfg.get<string[]>('compiler.args') || [];
-  const cwd: string | undefined = perGame.cwd || cfg.get<string>('compiler.cwd') || undefined;
+    const merged = getMergedGameConfig(cfg, game);
+    const compilerPath: string = merged.compiler.path || '';
+    const args: string[] = merged.compiler.args || [];
+    const cwd: string | undefined = merged.compiler.cwd || undefined;
 
-  // Build include arg from configured script folders
-  const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
-  const sep: string = cfg.get<string>('compiler.pathSeparator') || ';';
-  const scriptPaths: string[] = (gamesCfg[key]?.scriptPaths as string[] | undefined) || [];
+    // Build include arg from configured script folders
+    const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
+    const sep: string = cfg.get<string>('compiler.pathSeparator') || ';';
+    const scriptPaths: string[] = merged.scriptPaths || [];
     if (!compilerPath || !fs.existsSync(compilerPath)) {
       vscode.window.showErrorMessage('Papyrus compiler path is not set or does not exist. Configure papyrus.compiler.path.');
       return;
@@ -338,6 +437,14 @@ export function activate(context: vscode.ExtensionContext) {
       if (!arr.includes(newPath)) arr.push(newPath);
       next[profileKey] = { ...(next[profileKey] || {}), scriptPaths: arr };
       await cfg.update('games', next, target);
+      // Also update top-level convenience for Starfield/Fallout 4
+      if (profileKey === 'starfield' || profileKey === 'fallout4') {
+        const tl = cfg.get<any>(profileKey) || {};
+        const tlArr: string[] = Array.isArray(tl.scriptPaths) ? [...tl.scriptPaths] : [];
+        if (!tlArr.includes(newPath)) tlArr.push(newPath);
+        const merged = { ...tl, scriptPaths: tlArr };
+        await cfg.update(profileKey, merged, target);
+      }
     };
 
     // Starfield default path (from user input)
@@ -375,6 +482,12 @@ export function activate(context: vscode.ExtensionContext) {
       const current = cfg.get<any>('games') || {};
       const next = { ...current, [profileKey]: { ...(current[profileKey] || {}), compiler: { ...(current[profileKey]?.compiler || {}), path: pathValue } } };
       await cfg.update('games', next, target);
+      // Also update top-level convenience for Starfield/Fallout 4
+      if (profileKey === 'starfield' || profileKey === 'fallout4') {
+        const tl = cfg.get<any>(profileKey) || {};
+        const merged = { ...tl, compiler: { ...(tl.compiler || {}), path: pathValue } };
+        await cfg.update(profileKey, merged, target);
+      }
     };
 
     // Ask to set Starfield compiler
@@ -402,14 +515,40 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Papyrus compiler paths updated (where provided).');
   });
 
+  // Open Settings for current game
+  const openCurrentGameSettingsCmd = vscode.commands.registerCommand('papyrus.openCurrentGameSettings', async () => {
+    const g = getGame();
+    const tl = ((): string => {
+      switch (g) {
+        case 'Starfield': return 'papyrus.starfield';
+        case 'Fallout4': return 'papyrus.fallout4';
+        case 'Skyrim':
+        case 'SkyrimSE':
+        case 'SkyrimAE':
+          return 'papyrus.skyrim';
+        default:
+          return 'papyrus';
+      }
+    })();
+    await vscode.commands.executeCommand('workbench.action.openSettings', tl);
+  });
+
   // Auto-detect game installations (Steam) and configure compiler/script paths
   const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async () => {
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     const cfg = vscode.workspace.getConfiguration('papyrus');
   const autoCfg = (cfg.get<any>('autoDetect') || {});
-  const useVdf: boolean = autoCfg.useLibraryFoldersVdf !== false; // default true
+    const useVdf: boolean = autoCfg.useLibraryFoldersVdf !== false; // default true
   const additionalBasePaths: string[] = Array.isArray(autoCfg.additionalBasePaths) ? autoCfg.additionalBasePaths : [];
   const includeBothScriptPaths: boolean = !!autoCfg.includeBothScriptPaths;
+    const enableFlags = {
+      skyrim: autoCfg.enableSkyrim !== false,
+      skyrimse: autoCfg.enableSkyrimSE !== false,
+      skyrimae: autoCfg.enableSkyrimAE !== false,
+      fallout4: autoCfg.enableFallout4 !== false,
+      fallout76: autoCfg.enableFallout76 !== false,
+      starfield: autoCfg.enableStarfield !== false
+    };
 
     type Detected = { compilerPath?: string; scriptPaths: string[] };
     const detected: Record<'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield', Detected> = {
@@ -523,6 +662,8 @@ export function activate(context: vscode.ExtensionContext) {
         for (const dirName of entry.names) {
           const gameRoot = path.join(baseRoot, dirName);
           if (!fs.existsSync(gameRoot)) continue;
+          // Skip if disabled by settings
+          if (!enableFlags[entry.profile]) continue;
           // Detect compiler path: try common subpaths
           const compiler = findFirstExisting(
             path.join(gameRoot, 'Papyrus Compiler', 'PapyrusCompiler.exe'),
@@ -557,7 +698,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     if (!parts.length) {
       vscode.window.showInformationMessage('No game installations detected in common Steam library locations.');
-      return;
+      return detected;
     }
 
     const confirm = await vscode.window.showQuickPick([
@@ -596,7 +737,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       await buildIndex();
       vscode.window.showInformationMessage('Applied all detected Papyrus paths.');
-      return;
+      return detected;
     }
 
     // Interactive per-game review
@@ -613,6 +754,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     await buildIndex();
     vscode.window.showInformationMessage('Auto-detection complete. Applied selected Papyrus paths.');
+    return detected;
   });
 
   // Switch game command
@@ -645,10 +787,13 @@ export function activate(context: vscode.ExtensionContext) {
   addScriptFolderCmd,
     configureScriptFoldersCmd,
     configureCompilersCmd,
+    scanScriptsCmd,
     autoDetectCmd,
     switchGameCmd,
     cfgChange,
-    gameStatus
+    gameStatus,
+    settingsStatus,
+    openCurrentGameSettingsCmd
   );
 }
 

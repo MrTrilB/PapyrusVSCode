@@ -2,8 +2,12 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "your-name",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MrTrilB/PapyrusVSCode.git"
+  },
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -19,7 +23,9 @@
     "onCommand:papyrus.configureScriptFolders",
     "onCommand:papyrus.rebuildIndex",
     "onCommand:papyrus.addScriptFolder",
-    "onCommand:papyrus.autoDetectGamePaths"
+    "onCommand:papyrus.autoDetectGamePaths",
+      "onCommand:papyrus.scanScriptsForDiagnostics",
+      "onCommand:papyrus.openCurrentGameSettings"
   ],
   "contributes": {
     "languages": [
@@ -77,6 +83,14 @@
       {
         "command": "papyrus.autoDetectGamePaths",
         "title": "Papyrus: Auto-Detect Game Paths"
+      },
+      {
+        "command": "papyrus.scanScriptsForDiagnostics",
+        "title": "Papyrus: Scan Scripts for Diagnostics"
+      },
+      {
+        "command": "papyrus.openCurrentGameSettings",
+        "title": "Papyrus: Open Current Game Settings"
       }
     ],
     "menus": {
@@ -98,6 +112,14 @@
         },
         {
           "command": "papyrus.autoDetectGamePaths",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.scanScriptsForDiagnostics",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.openCurrentGameSettings",
           "when": "true"
         }
       ]
@@ -227,6 +249,54 @@
             }
           }
         },
+        "papyrus.skyrim": {
+          "type": "object",
+          "description": "Convenience settings for Skyrim (applies to Skyrim, SkyrimSE, and SkyrimAE profiles).",
+          "default": {},
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Skyrim scripts folders (typically Data/\u005cScripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Skyrim." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Skyrim." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Skyrim compiler (optional)." }
+              }
+            }
+          }
+        },
+        "papyrus.fallout4": {
+          "type": "object",
+          "description": "Convenience settings for Fallout 4.",
+          "default": {},
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Fallout 4 scripts folders (typically Data/\u005cScripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Fallout 4." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Fallout 4." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Fallout 4 compiler (optional)." }
+              }
+            }
+          }
+        },
+        "papyrus.starfield": {
+          "type": "object",
+          "description": "Convenience settings for Starfield.",
+          "default": {},
+          "properties": {
+            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Starfield scripts folders (typically Data/\u005cScripts/Source)." },
+            "compiler": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Starfield." },
+                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Starfield." },
+                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Starfield compiler (optional)." }
+              }
+            }
+          }
+        },
         "papyrus.autoDetect": {
           "type": "object",
           "description": "Auto-detection settings for game paths.",
@@ -247,12 +317,18 @@
               "type": "boolean",
               "default": false,
               "description": "When true, include both Data\\Scripts\\Source and Data\\Scripts if both exist. Otherwise prefer Source only."
+            },
+            "enableSkyrim": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim." },
+            "enableSkyrimSE": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim Special Edition." },
+            "enableSkyrimAE": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim Anniversary Edition (shares SE path)." },
+            "enableFallout4": { "type": "boolean", "default": true, "description": "Enable auto-detect for Fallout 4." },
+            "enableFallout76": { "type": "boolean", "default": true, "description": "Enable auto-detect for Fallout 76." },
+            "enableStarfield": { "type": "boolean", "default": true, "description": "Enable auto-detect for Starfield." }
             }
           }
         }
       }
-    }
-  },
+    },
   "scripts": {
     "vscode:prepublish": "npm run webpack-prod",
     "compile": "npm run webpack-dev",
