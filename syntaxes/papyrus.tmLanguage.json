@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Papyrus",
+  "scopeName": "source.papyrus",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#functions" },
+    { "include": "#variables" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.block.papyrus", "begin": "/\\*", "end": "\\*/" },
+        { "name": "comment.line.double-slash.papyrus", "match": "//.*$" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.papyrus",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.papyrus", "match": "\\\\.|\\\"" }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.float.papyrus", "match": "(?i)\\b[0-9]+\\.[0-9]+(e[+-]?[0-9]+)?\\b" },
+        { "name": "constant.numeric.integer.papyrus", "match": "\\b[0-9]+\\b" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.papyrus",
+          "match": "(?i)\\b(if|else|elseif|endif|while|endwhile|return|state|endstate|goto|auto)\\b"
+        },
+        {
+          "name": "storage.modifier.papyrus",
+          "match": "(?i)\\b(auto|readonly|const|global|native|hidden|conditional)\\b"
+        },
+        {
+          "name": "storage.type.definition.papyrus",
+          "match": "(?i)\\b(scriptname|extends|import|property|function|event)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.papyrus",
+          "match": "(?i)\\b(bool|int|float|string|var|objectreference|actor|form|alias|quest)\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.papyrus",
+          "match": "(?i)\\b(function|event)\\s+[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        { "name": "variable.other.papyrus", "match": "(?i)\\b[A-Za-z_][A-Za-z0-9_]*\\b" }
+      ]
+    }
+  }
+}

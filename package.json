@@ -1,0 +1,51 @@
+{
+  "name": "papyrus-tools",
+  "displayName": "Papyrus Tools",
+  "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
+  "version": "0.1.0",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  
+  
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "papyrus",
+        "aliases": ["Papyrus", "papyrus"],
+        "extensions": [".psc", ".pex"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "papyrus",
+        "scopeName": "source.papyrus",
+        "path": "./syntaxes/papyrus.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "papyrus",
+        "path": "./snippets/papyrus.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "echo 'No linter configured'"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.91.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.6.3"
+  }
+}
