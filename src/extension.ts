@@ -2,11 +2,22 @@ import * as vscode from 'vscode';
 import 'source-map-support/register';
 import * as fs from 'fs';
 
-const PAPYRUS_KEYWORDS = [
+type GameProfile = 'Skyrim' | 'SkyrimSE' | 'SkyrimAE' | 'Fallout4' | 'Fallout76' | 'Starfield';
+
+const BASE_KEYWORDS = [
   'ScriptName', 'Extends', 'Import', 'Property', 'Function', 'EndFunction', 'Event', 'EndEvent',
   'If', 'ElseIf', 'Else', 'EndIf', 'While', 'EndWhile', 'Return', 'State', 'EndState', 'Goto', 'Auto',
   'Global', 'Native', 'Hidden', 'Conditional', 'ReadOnly', 'Const'
 ];
+
+function getKeywordsForGame(game: GameProfile): string[] {
+  const extras: string[] = [];
+  // Structs are supported in Fallout 4+, Fallout 76, and Starfield
+  if (game === 'Fallout4' || game === 'Fallout76' || game === 'Starfield') {
+    extras.push('Struct', 'EndStruct');
+  }
+  return [...BASE_KEYWORDS, ...extras];
+}
 
 const PAPYRUS_TYPES = [
   'Bool', 'Int', 'Float', 'String', 'Var', 'Form', 'ObjectReference', 'Actor', 'Alias', 'Quest'
@@ -14,6 +25,25 @@ const PAPYRUS_TYPES = [
 
 export function activate(context: vscode.ExtensionContext) {
   const selector: vscode.DocumentSelector = { language: 'papyrus', scheme: '*' };
+
+  const getGame = (): GameProfile => {
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const g = cfg.get<string>('game', 'Skyrim');
+    const allowed: GameProfile[] = ['Skyrim', 'SkyrimSE', 'SkyrimAE', 'Fallout4', 'Fallout76', 'Starfield'];
+    return (allowed.includes(g as GameProfile) ? (g as GameProfile) : 'Skyrim');
+  };
+
+  // Status bar to show/switch game profile
+  const gameStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  gameStatus.name = 'Papyrus Game Profile';
+  gameStatus.command = 'papyrus.switchGame';
+  const updateGameStatus = () => {
+    const g = getGame();
+    gameStatus.text = `$(tools) Papyrus: ${g}`;
+    gameStatus.tooltip = 'Switch Papyrus game profile';
+    gameStatus.show();
+  };
+  updateGameStatus();
 
   const completionProvider = vscode.languages.registerCompletionItemProvider(
     selector,
@@ -23,7 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
         void document;
         void position;
         const items: vscode.CompletionItem[] = [];
-        for (const kw of PAPYRUS_KEYWORDS) {
+        const keywords = getKeywordsForGame(getGame());
+        for (const kw of keywords) {
           const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
           items.push(item);
         }
@@ -42,7 +73,8 @@ export function activate(context: vscode.ExtensionContext) {
       const range = document.getWordRangeAtPosition(position);
       if (!range) return undefined;
       const word = document.getText(range);
-      if (PAPYRUS_KEYWORDS.map(w => w.toLowerCase()).includes(word.toLowerCase())) {
+      const allKeywords = getKeywordsForGame(getGame());
+      if (allKeywords.map(w => w.toLowerCase()).includes(word.toLowerCase())) {
         return new vscode.Hover(`Papyrus keyword: ${word}`);
       }
       if (PAPYRUS_TYPES.map(w => w.toLowerCase()).includes(word.toLowerCase())) {
@@ -149,9 +181,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
     await doc.save();
     const cfg = vscode.workspace.getConfiguration('papyrus');
-    const compilerPath = cfg.get<string>('compiler.path') || '';
-    const args = cfg.get<string[]>('compiler.args') || [];
-    const cwd = cfg.get<string>('compiler.cwd') || undefined;
+    const game = getGame();
+    const key = game.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
+    // Prefer per-game compiler settings, fallback to global
+    const perGame = (cfg.get<any>('games')?.[key]?.compiler) || {};
+    const compilerPath: string = perGame.path || cfg.get<string>('compiler.path') || '';
+    const args: string[] = perGame.args || cfg.get<string[]>('compiler.args') || [];
+    const cwd: string | undefined = perGame.cwd || cfg.get<string>('compiler.cwd') || undefined;
     if (!compilerPath || !fs.existsSync(compilerPath)) {
       vscode.window.showErrorMessage('Papyrus compiler path is not set or does not exist. Configure papyrus.compiler.path.');
       return;
@@ -164,12 +200,34 @@ export function activate(context: vscode.ExtensionContext) {
     term.show();
   });
 
+  // Switch game command
+  const switchGameCmd = vscode.commands.registerCommand('papyrus.switchGame', async () => {
+    const options: GameProfile[] = ['Skyrim', 'SkyrimSE', 'SkyrimAE', 'Fallout4', 'Fallout76', 'Starfield'];
+    const pick = await vscode.window.showQuickPick(options, {
+      title: 'Select Papyrus game profile',
+      placeHolder: 'Choose the target game for Papyrus features and compiler configs'
+    });
+    if (!pick) return;
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await vscode.workspace.getConfiguration('papyrus').update('game', pick, target);
+    updateGameStatus();
+    vscode.window.showInformationMessage(`Papyrus game profile set to ${pick}.`);
+  });
+
+  // React to configuration changes
+  const cfgChange = vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('papyrus.game')) updateGameStatus();
+  });
+
   context.subscriptions.push(
     completionProvider,
     hoverProvider,
     symbolProvider,
     definitionProvider,
-    compileCmd
+    compileCmd,
+    switchGameCmd,
+    cfgChange,
+    gameStatus
   );
 }
 

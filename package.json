@@ -13,7 +13,8 @@
   "main": "./out/extension.js",
   "sideEffects": false,
   "activationEvents": [
-    "onCommand:papyrus.compileFile"
+    "onCommand:papyrus.compileFile",
+    "onCommand:papyrus.switchGame"
   ],
   "contributes": {
     "languages": [
@@ -47,6 +48,10 @@
       {
         "command": "papyrus.compileFile",
         "title": "Papyrus: Compile Current File"
+      },
+      {
+        "command": "papyrus.switchGame",
+        "title": "Papyrus: Switch Game Profile"
       }
     ],
     "menus": {
@@ -61,12 +66,22 @@
         {
           "command": "papyrus.compileFile",
           "when": "true"
+        },
+        {
+          "command": "papyrus.switchGame",
+          "when": "true"
         }
       ]
     },
     "configuration": {
       "title": "Papyrus Tools",
       "properties": {
+        "papyrus.game": {
+          "type": "string",
+          "enum": ["Skyrim", "SkyrimSE", "SkyrimAE", "Fallout4", "Fallout76", "Starfield"],
+          "default": "Skyrim",
+          "description": "Active game profile to use for keywords and compiler settings."
+        },
         "papyrus.compiler.path": {
           "type": "string",
           "default": "",
@@ -81,6 +96,91 @@
           "type": "string",
           "default": "",
           "description": "Working directory to run the compiler in (optional)."
+        },
+        "papyrus.games": {
+          "type": "object",
+          "description": "Per-game compiler settings. Keys: skyrim, skyrimse, skyrimae, fallout4, fallout76, starfield.",
+          "default": {},
+          "properties": {
+            "skyrim": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            },
+            "skyrimse": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            },
+            "skyrimae": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            },
+            "fallout4": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            },
+            "fallout76": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            },
+            "starfield": {
+              "type": "object",
+              "properties": {
+                "compiler": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "default": "" },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "cwd": { "type": "string", "default": "" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

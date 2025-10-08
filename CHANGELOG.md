@@ -8,3 +8,5 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 - Added document symbols, go-to definition
 - Added basic diagnostics (If/EndIf, While/EndWhile)
 - Added compile command and settings
+- Added multi-game support (Skyrim/SE/AE, Fallout 4/76, Starfield)
+- Added status bar game selector and switch command
