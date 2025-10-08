@@ -6,7 +6,8 @@ Features:
 - Syntax highlighting (TextMate grammar)
 - Language configuration (comments/brackets)
 - Snippets for common constructs
-- Basic completions and hovers for keywords and types
+- Enhanced completions and hovers for keywords, built-in types, and indexed Starfield scripts/functions
+- Starfield script function completions (e.g. `Utility.GetCurrentGameTime`) when the Starfield profile is active
 - Document symbols (Outline) for functions/events/properties
 - Go to Definition within a file for functions/events
 - Basic diagnostics for If/EndIf and While/EndWhile balance

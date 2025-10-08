@@ -275,9 +275,6 @@ export function activate(context: vscode.ExtensionContext) {
     selector,
     {
       provideCompletionItems(document, position) {
-        // mark parameters as used to satisfy noUnusedParameters
-        void document;
-        void position;
         const items: vscode.CompletionItem[] = [];
         const keywords = getKeywordsForGame(getGame());
         for (const kw of keywords) {
@@ -288,10 +285,44 @@ export function activate(context: vscode.ExtensionContext) {
           const item = new vscode.CompletionItem(t, vscode.CompletionItemKind.TypeParameter);
           items.push(item);
         }
+
+        if (getGame() === 'Starfield' && scriptIndex.size > 0) {
+          const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
+          const match = /([A-Za-z_][A-Za-z0-9_]*)\.\s*([A-Za-z_][A-Za-z0-9_]*)?$/.exec(linePrefix);
+          if (match) {
+            const scriptToken = match[1].toLowerCase();
+            const entry = scriptIndex.get(scriptToken);
+            if (entry) {
+              const replaceRange = document.getWordRangeAtPosition(position, /[A-Za-z_][A-Za-z0-9_]*/);
+              const seen = new Set<string>();
+              for (const fn of entry.functions) {
+                const lower = fn.name.toLowerCase();
+                if (seen.has(lower)) continue;
+                seen.add(lower);
+                const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Method);
+                item.detail = `${entry.scriptName}.psc`;
+                item.insertText = new vscode.SnippetString(`${fn.name}()$0`);
+                if (replaceRange) item.range = replaceRange;
+                item.sortText = `0_${fn.name}`;
+                items.push(item);
+              }
+              for (const ev of entry.events) {
+                const lower = ev.name.toLowerCase();
+                if (seen.has(lower)) continue;
+                seen.add(lower);
+                const item = new vscode.CompletionItem(ev.name, vscode.CompletionItemKind.Event);
+                item.detail = `${entry.scriptName}.psc (event)`;
+                if (replaceRange) item.range = replaceRange;
+                item.sortText = `0_${ev.name}`;
+                items.push(item);
+              }
+            }
+          }
+        }
         return items;
       }
     },
-    '.' // trigger on dot to help with object members later
+    '.' // trigger on dot to help with object members
   );
 
   const hoverProvider = vscode.languages.registerHoverProvider(selector, {
@@ -299,12 +330,75 @@ export function activate(context: vscode.ExtensionContext) {
       const range = document.getWordRangeAtPosition(position);
       if (!range) return undefined;
       const word = document.getText(range);
-      const allKeywords = getKeywordsForGame(getGame());
-      if (allKeywords.map(w => w.toLowerCase()).includes(word.toLowerCase())) {
-        return new vscode.Hover(`Papyrus keyword: ${word}`);
+      const lower = word.toLowerCase();
+      const allKeywords = getKeywordsForGame(getGame()).map(w => w.toLowerCase());
+      if (allKeywords.includes(lower)) {
+        return new vscode.Hover(new vscode.MarkdownString(`**Keyword** \`${word}\` — core Papyrus language construct.`), range);
       }
-      if (PAPYRUS_TYPES.map(w => w.toLowerCase()).includes(word.toLowerCase())) {
-        return new vscode.Hover(`Papyrus type: ${word}`);
+      if (PAPYRUS_TYPES.map(w => w.toLowerCase()).includes(lower)) {
+        return new vscode.Hover(new vscode.MarkdownString(`**Type** \`${word}\` — built-in Papyrus type.`), range);
+      }
+
+      const scriptEntry = scriptIndex.get(lower);
+      if (scriptEntry) {
+        const location = vscode.workspace.asRelativePath(scriptEntry.uri, false);
+        const md = new vscode.MarkdownString();
+        md.appendMarkdown(`**Script** \`${scriptEntry.scriptName}\``);
+        if (scriptEntry.extends) {
+          md.appendMarkdown(`  \nExtends: \`${scriptEntry.extends}\``);
+        }
+        md.appendMarkdown(`  \nSource: ${location}`);
+        const fnCount = scriptEntry.functions.length;
+        const evCount = scriptEntry.events.length;
+        if (fnCount > 0 || evCount > 0) {
+          md.appendMarkdown('\n\n---\n');
+          if (fnCount > 0) {
+            const fnList = scriptEntry.functions.slice(0, 6).map(fn => `- \`${fn.name}()\``).join('\n');
+            md.appendMarkdown(`**Functions**\n${fnList}`);
+            if (fnCount > 6) {
+              md.appendMarkdown(`\n…(+${fnCount - 6} more)`);
+            }
+          }
+          if (evCount > 0) {
+            if (fnCount > 0) md.appendMarkdown('\n\n');
+            const evList = scriptEntry.events.slice(0, 6).map(ev => `- \`${ev.name}\``).join('\n');
+            md.appendMarkdown(`**Events**\n${evList}`);
+            if (evCount > 6) {
+              md.appendMarkdown(`\n…(+${evCount - 6} more)`);
+            }
+          }
+        }
+        md.isTrusted = false;
+        return new vscode.Hover(md, range);
+      }
+
+      const functionHits: Array<{ entry: ScriptIndexEntry; kind: 'Function' | 'Event'; name: string; line: number }> = [];
+      for (const entry of scriptIndex.values()) {
+        for (const fn of entry.functions) {
+          if (fn.name.toLowerCase() === lower) {
+            functionHits.push({ entry, kind: 'Function', name: fn.name, line: fn.line });
+          }
+        }
+        for (const ev of entry.events) {
+          if (ev.name.toLowerCase() === lower) {
+            functionHits.push({ entry, kind: 'Event', name: ev.name, line: ev.line });
+          }
+        }
+      }
+      if (functionHits.length > 0) {
+        const md = new vscode.MarkdownString();
+        const primary = functionHits[0];
+        md.appendMarkdown(`**${primary.kind}** \`${word}\``);
+        const entries = functionHits.slice(0, 5).map(hit => {
+          const rel = vscode.workspace.asRelativePath(hit.entry.uri, false);
+          return `- ${hit.entry.scriptName}.psc (line ${hit.line + 1}) — ${rel}`;
+        }).join('\n');
+        md.appendMarkdown(`\n${entries}`);
+        if (functionHits.length > 5) {
+          md.appendMarkdown(`\n…(+${functionHits.length - 5} more matches)`);
+        }
+        md.isTrusted = false;
+        return new vscode.Hover(md, range);
       }
       return undefined;
     }

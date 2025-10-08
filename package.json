@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "publisher": "your-name",
   "repository": {
     "type": "git",

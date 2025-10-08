@@ -52,6 +52,8 @@ The extension supports Skyrim, SkyrimSE, SkyrimAE, Fallout4, Fallout76, and Star
 - Use `Go to Definition`, `Workspace Symbols`, and hover info inside Papyrus scripts for quick navigation.
 - Run `Papyrus: Scan Scripts for Diagnostics` to validate entire script trees for control-flow balance issues.
 - Compile the active script via `Papyrus: Compile Current File`; the command assembles include flags based on your profile settings and runs the compiler in a dedicated terminal.
+- When the Starfield profile is active and its script folders are indexed, typing `Utility.` (or another Starfield script name) surfaces Starfield functions via completion.
+- Hovering keywords, built-in types, or indexed Starfield scripts/functions now displays the script origin, inheritance, and member summaries for quick reference.
 
 ## Packaging and Publishing
 - Update `package.json` metadata (version, publisher) before packaging.

@@ -24,6 +24,200 @@ suite('Papyrus Tools basic features', () => {
     assert.ok(labels.includes('scriptname'), 'Should include ScriptName');
   });
 
+  test('Starfield utility functions appear after dot', async () => {
+    const ext = vscode.extensions.getExtension('your-name.papyrus-tools');
+    assert.ok(ext, 'Extension should be registered');
+    await ext!.activate();
+
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
+    const gameInspect = cfg.inspect<string>('game');
+    const gamesInspect = cfg.inspect<any>('games');
+    const starfieldInspect = cfg.inspect<any>('starfield');
+
+    const originalGameGlobal = gameInspect?.globalValue;
+    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
+    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
+    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
+    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
+    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let tempRoot: string;
+    if (workspaceFolder) {
+      tempRoot = path.join(workspaceFolder, '.papyrus-tests', `sf-completions-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      fs.mkdirSync(tempRoot, { recursive: true });
+    } else {
+      tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'papyrus-sf-'));
+    }
+    const scriptRoot = path.join(tempRoot, 'scripts');
+    fs.mkdirSync(scriptRoot, { recursive: true });
+  const scriptName = 'SfTestUtility';
+  const utilityPath = path.join(scriptRoot, `${scriptName}.psc`);
+  fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
+
+    const mergePaths = (existing: any, targetPath: string) => {
+      const next = { ...(existing || {}) };
+      const paths: string[] = Array.isArray(next.scriptPaths) ? [...next.scriptPaths] : [];
+      if (!paths.some(p => p.toLowerCase() === targetPath.toLowerCase())) paths.unshift(targetPath);
+      next.scriptPaths = paths;
+      return next;
+    };
+
+    try {
+      if (hasWorkspace) {
+        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
+        const workspaceGames = originalGamesWorkspace ? JSON.parse(JSON.stringify(originalGamesWorkspace)) : {};
+        workspaceGames['starfield'] = mergePaths(workspaceGames['starfield'], scriptRoot);
+        await cfg.update('games', workspaceGames, vscode.ConfigurationTarget.Workspace);
+        const workspaceStarfield = mergePaths(originalStarfieldWorkspace, scriptRoot);
+        await cfg.update('starfield', workspaceStarfield, vscode.ConfigurationTarget.Workspace);
+      }
+
+    await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
+      const globalGames = originalGamesGlobal ? JSON.parse(JSON.stringify(originalGamesGlobal)) : {};
+      globalGames['starfield'] = mergePaths(globalGames['starfield'], scriptRoot);
+      await cfg.update('games', globalGames, vscode.ConfigurationTarget.Global);
+      const globalStarfield = mergePaths(originalStarfieldGlobal, scriptRoot);
+      await cfg.update('starfield', globalStarfield, vscode.ConfigurationTarget.Global);
+    const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
+    assert.ok(matches.length >= 1, 'Sanity check: SfTestUtility.psc should be discoverable');
+
+      await vscode.commands.executeCommand('papyrus.rebuildIndex');
+      await new Promise(res => setTimeout(res, 200));
+
+      const doc = await vscode.workspace.openTextDocument({ language: 'papyrus', content: `${scriptName}.` });
+      await vscode.window.showTextDocument(doc);
+      const pos = new vscode.Position(0, `${scriptName}.`.length);
+      let completionFound = false;
+      for (let attempt = 0; attempt < 20 && !completionFound; attempt++) {
+        const completions = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', doc.uri, pos);
+        const labels = (completions?.items || []).map(item => item.label.toString());
+        if (labels.includes('MyStarfieldHelper')) {
+          completionFound = true;
+          break;
+        }
+        await new Promise(res => setTimeout(res, 200));
+      }
+      assert.ok(completionFound, 'Starfield helper function should be suggested');
+    } finally {
+      if (hasWorkspace) {
+        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      }
+      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('Hover shows Starfield script and function details', async () => {
+    const ext = vscode.extensions.getExtension('your-name.papyrus-tools');
+    assert.ok(ext, 'Extension should be registered');
+    await ext!.activate();
+
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
+    const gameInspect = cfg.inspect<string>('game');
+    const gamesInspect = cfg.inspect<any>('games');
+    const starfieldInspect = cfg.inspect<any>('starfield');
+
+    const originalGameGlobal = gameInspect?.globalValue;
+    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
+    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
+    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
+    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
+    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let tempRoot: string;
+    if (workspaceFolder) {
+      tempRoot = path.join(workspaceFolder, '.papyrus-tests', `sf-hover-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      fs.mkdirSync(tempRoot, { recursive: true });
+    } else {
+      tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'papyrus-sf-hover-'));
+    }
+    const scriptRoot = path.join(tempRoot, 'scripts');
+    fs.mkdirSync(scriptRoot, { recursive: true });
+  const baseScriptName = 'SfTestUtility';
+  const utilityPath = path.join(scriptRoot, `${baseScriptName}.psc`);
+  fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
+  const consumerPath = path.join(scriptRoot, 'Consumer.psc');
+  fs.writeFileSync(consumerPath, ['ScriptName Consumer extends SfTestUtility', 'Function DoSomething()', '  SfTestUtility.MyStarfieldHelper()', 'EndFunction'].join('\n'));
+
+    const mergePaths = (existing: any, targetPath: string) => {
+      const next = { ...(existing || {}) };
+      const paths: string[] = Array.isArray(next.scriptPaths) ? [...next.scriptPaths] : [];
+      if (!paths.some(p => p.toLowerCase() === targetPath.toLowerCase())) paths.unshift(targetPath);
+      next.scriptPaths = paths;
+      return next;
+    };
+
+    try {
+      if (hasWorkspace) {
+        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
+        const workspaceGames = originalGamesWorkspace ? JSON.parse(JSON.stringify(originalGamesWorkspace)) : {};
+        workspaceGames['starfield'] = mergePaths(workspaceGames['starfield'], scriptRoot);
+        await cfg.update('games', workspaceGames, vscode.ConfigurationTarget.Workspace);
+        const workspaceStarfield = mergePaths(originalStarfieldWorkspace, scriptRoot);
+        await cfg.update('starfield', workspaceStarfield, vscode.ConfigurationTarget.Workspace);
+      }
+
+    await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
+      const globalGames = originalGamesGlobal ? JSON.parse(JSON.stringify(originalGamesGlobal)) : {};
+      globalGames['starfield'] = mergePaths(globalGames['starfield'], scriptRoot);
+      await cfg.update('games', globalGames, vscode.ConfigurationTarget.Global);
+      const globalStarfield = mergePaths(originalStarfieldGlobal, scriptRoot);
+      await cfg.update('starfield', globalStarfield, vscode.ConfigurationTarget.Global);
+    const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
+    assert.ok(matches.length >= 2, 'Sanity check: Starfield temp scripts should be discoverable');
+
+      await vscode.commands.executeCommand('papyrus.rebuildIndex');
+      await new Promise(res => setTimeout(res, 200));
+
+      const consumerDoc = await vscode.workspace.openTextDocument({ language: 'papyrus', content: fs.readFileSync(consumerPath, 'utf8') });
+      await vscode.window.showTextDocument(consumerDoc);
+
+      const scriptHoverPos = new vscode.Position(0, 'ScriptName Consumer extends '.length);
+      let scriptHoverFound = false;
+      for (let attempt = 0; attempt < 20 && !scriptHoverFound; attempt++) {
+        const scriptHovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', consumerDoc.uri, scriptHoverPos);
+        const scriptHoverText = (scriptHovers || []).flatMap(h => h.contents).map(content => typeof content === 'string' ? content : ('value' in content ? content.value : '')).join('\n');
+        if (scriptHoverText.includes('**Script** `SfTestUtility`')) {
+          scriptHoverFound = true;
+          break;
+        }
+        await new Promise(res => setTimeout(res, 200));
+      }
+      assert.ok(scriptHoverFound, 'Hover should include script details for Utility');
+
+      const functionPos = new vscode.Position(2, '  SfTestUtility.'.length); // position on MyStarfieldHelper
+      let functionHoverFound = false;
+      for (let attempt = 0; attempt < 20 && !functionHoverFound; attempt++) {
+        const functionHovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', consumerDoc.uri, functionPos);
+        const functionHoverText = (functionHovers || []).flatMap(h => h.contents).map(content => typeof content === 'string' ? content : ('value' in content ? content.value : '')).join('\n');
+        if (functionHoverText.includes('**Function** `MyStarfieldHelper`')) {
+          functionHoverFound = true;
+          break;
+        }
+        await new Promise(res => setTimeout(res, 200));
+      }
+      assert.ok(functionHoverFound, 'Hover should include function details for MyStarfieldHelper');
+    } finally {
+      if (hasWorkspace) {
+        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      }
+      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
+      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   test('Document symbols detect function/event/property', async () => {
     const content = [
       'ScriptName Foo extends Quest',
