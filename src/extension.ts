@@ -406,6 +406,9 @@ export function activate(context: vscode.ExtensionContext) {
   const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async () => {
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     const cfg = vscode.workspace.getConfiguration('papyrus');
+    const autoCfg = (cfg.get<any>('autoDetect') || {});
+    const useVdf: boolean = autoCfg.useLibraryFoldersVdf !== false; // default true
+    const additionalBasePaths: string[] = Array.isArray(autoCfg.additionalBasePaths) ? autoCfg.additionalBasePaths : [];
 
     type Detected = { compilerPath?: string; scriptPaths: string[] };
     const detected: Record<'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield', Detected> = {
@@ -417,15 +420,72 @@ export function activate(context: vscode.ExtensionContext) {
       starfield: { scriptPaths: [] }
     };
 
-    // Common Steam library locations to probe (keep small/fast)
-    const bases = [
+    // Build base common paths set from defaults, user-configured, and libraryfolders.vdf
+    const baseCommonPaths = new Set<string>();
+    const pushCommon = (p: string) => {
+      // Normalize input: if user provides a library root, append steamapps/common
+      const norm = p.replace(/\\/g, '/');
+      if (/steamapps\/common\/?$/i.test(norm)) {
+        baseCommonPaths.add(path.normalize(norm));
+      } else if (/steamapps\/?$/i.test(norm)) {
+        baseCommonPaths.add(path.normalize(path.join(norm, 'common')));
+      } else {
+        baseCommonPaths.add(path.normalize(path.join(norm, 'steamapps', 'common')));
+      }
+    };
+    // Default common locations
+    [
       'C:/Program Files (x86)/Steam/steamapps/common',
       'C:/Program Files/Steam/steamapps/common',
       'C:/SteamLibrary/steamapps/common',
       'D:/SteamLibrary/steamapps/common',
       'E:/SteamLibrary/steamapps/common',
       'F:/SteamLibrary/steamapps/common'
-    ];
+    ].forEach(pushCommon);
+    // User-configured additional bases
+    for (const p of additionalBasePaths) pushCommon(p);
+
+    // Try to parse Steam libraryfolders.vdf for additional libraries
+    const tryRead = (p: string): string | undefined => {
+      try { if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8'); } catch {}
+      return undefined;
+    };
+    const env = process.env;
+    const localAppData = env.LOCALAPPDATA ? env.LOCALAPPDATA.replace(/\\/g, '/') : undefined;
+    const programFilesX86 = env['ProgramFiles(x86)'] ? env['ProgramFiles(x86)']!.replace(/\\/g, '/') : undefined;
+    const programFiles = env['ProgramFiles'] ? env['ProgramFiles']!.replace(/\\/g, '/') : undefined;
+    const vdfCandidates: string[] = [];
+    if (useVdf) {
+      if (programFilesX86) {
+        vdfCandidates.push(
+          `${programFilesX86}/Steam/steamapps/libraryfolders.vdf`,
+          `${programFilesX86}/Steam/config/libraryfolders.vdf`
+        );
+      }
+      if (programFiles) {
+        vdfCandidates.push(
+          `${programFiles}/Steam/steamapps/libraryfolders.vdf`,
+          `${programFiles}/Steam/config/libraryfolders.vdf`
+        );
+      }
+      if (localAppData) {
+        vdfCandidates.push(
+          `${localAppData}/Steam/steamapps/libraryfolders.vdf`,
+          `${localAppData}/Steam/config/libraryfolders.vdf`
+        );
+      }
+      for (const vdfPath of vdfCandidates) {
+        const content = tryRead(vdfPath);
+        if (!content) continue;
+        // Extract all path values ("path" "<library>") and append steamapps/common
+        const re = /"path"\s*"([^"]+)"/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(content)) !== null) {
+          const lib = m[1].replace(/\\\\/g, '\\');
+          pushCommon(lib);
+        }
+      }
+    }
 
     const gameDirs: Record<string, { profile: keyof typeof detected; names: string[] }[]> = {
       // multiple potential folder names per title
@@ -448,7 +508,7 @@ export function activate(context: vscode.ExtensionContext) {
       return undefined;
     };
 
-    for (const baseRoot of bases) {
+    for (const baseRoot of baseCommonPaths) {
       if (!fs.existsSync(baseRoot)) continue;
       for (const entry of gameDirs.base) {
         for (const dirName of entry.names) {

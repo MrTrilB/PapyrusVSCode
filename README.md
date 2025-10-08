@@ -61,6 +61,9 @@ Commands:
 - Papyrus: Add Script Folder – pick any folder to add to the active game profile
 - Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
  - Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim/SE/AE/FO4/FO76/Starfield and offers to apply detected compiler/script paths
+	 - Settings:
+		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
+		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
 
 ### Commands
 

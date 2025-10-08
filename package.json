@@ -226,6 +226,24 @@
               }
             }
           }
+        },
+        "papyrus.autoDetect": {
+          "type": "object",
+          "description": "Auto-detection settings for game paths.",
+          "default": {},
+          "properties": {
+            "useLibraryFoldersVdf": {
+              "type": "boolean",
+              "default": true,
+              "description": "Parse Steam libraryfolders.vdf to discover additional library locations."
+            },
+            "additionalBasePaths": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": [],
+              "description": "Additional base library paths. You can provide either the library root, 'steamapps', or 'steamapps/common'."
+            }
+          }
         }
       }
     }
