@@ -184,20 +184,72 @@ export function activate(context: vscode.ExtensionContext) {
     const game = getGame();
     const key = game.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
     // Prefer per-game compiler settings, fallback to global
-    const perGame = (cfg.get<any>('games')?.[key]?.compiler) || {};
-    const compilerPath: string = perGame.path || cfg.get<string>('compiler.path') || '';
-    const args: string[] = perGame.args || cfg.get<string[]>('compiler.args') || [];
-    const cwd: string | undefined = perGame.cwd || cfg.get<string>('compiler.cwd') || undefined;
+  const gamesCfg = cfg.get<any>('games') || {};
+  const perGame = (gamesCfg[key]?.compiler) || {};
+  const compilerPath: string = perGame.path || cfg.get<string>('compiler.path') || '';
+  const args: string[] = perGame.args || cfg.get<string[]>('compiler.args') || [];
+  const cwd: string | undefined = perGame.cwd || cfg.get<string>('compiler.cwd') || undefined;
+
+  // Build include arg from configured script folders
+  const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
+  const sep: string = cfg.get<string>('compiler.pathSeparator') || ';';
+  const scriptPaths: string[] = (gamesCfg[key]?.scriptPaths as string[] | undefined) || [];
     if (!compilerPath || !fs.existsSync(compilerPath)) {
       vscode.window.showErrorMessage('Papyrus compiler path is not set or does not exist. Configure papyrus.compiler.path.');
       return;
     }
     const scriptPath = doc.uri.fsPath;
     const cmd = `${compilerPath}`;
-    const finalArgs = [...args, scriptPath];
+    const finalArgs: string[] = [...args];
+    if (scriptPaths.length > 0) {
+      const joined = scriptPaths.join(sep);
+      const flag = includeFlag.includes('=') ? `${includeFlag}"${joined}"` : `${includeFlag}="${joined}"`;
+      finalArgs.push(flag);
+    }
+    finalArgs.push(scriptPath);
     const term = vscode.window.createTerminal({ name: 'Papyrus Compile', cwd });
     term.sendText([cmd, ...finalArgs.map(a => a.includes(' ') ? `"${a}"` : a)].join(' '));
     term.show();
+  });
+
+  // Configure script folders command: sets per-game include paths
+  const configureScriptFoldersCmd = vscode.commands.registerCommand('papyrus.configureScriptFolders', async () => {
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const currentGames = cfg.get<any>('games') || {};
+
+    // Helper to push a unique path to scriptPaths array for a profile key
+    const pushScriptPath = async (profileKey: string, newPath: string) => {
+      const next = { ...currentGames };
+      const arr: string[] = Array.isArray(next[profileKey]?.scriptPaths) ? [...next[profileKey].scriptPaths] : [];
+      if (!arr.includes(newPath)) arr.push(newPath);
+      next[profileKey] = { ...(next[profileKey] || {}), scriptPaths: arr };
+      await cfg.update('games', next, target);
+    };
+
+    // Starfield default path (from user input)
+    const starfieldDefault = 'C\\SteamLibrary\\steamapps\\common\\Starfield\\Data\\Scripts';
+    const sfPath = await vscode.window.showInputBox({
+      title: 'Starfield Script Folder (Data/Scripts)',
+      value: starfieldDefault,
+      prompt: 'Enter the Starfield script folder path (leave empty to skip)'
+    });
+    if (sfPath && sfPath.trim()) {
+      await pushScriptPath('starfield', sfPath.trim());
+    }
+
+    // Fallout 4 default path (from user input)
+    const fo4Default = 'C\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts';
+    const fo4Path = await vscode.window.showInputBox({
+      title: 'Fallout 4 Script Folder (Data/Scripts)',
+      value: fo4Default,
+      prompt: 'Enter the Fallout 4 script folder path (leave empty to skip)'
+    });
+    if (fo4Path && fo4Path.trim()) {
+      await pushScriptPath('fallout4', fo4Path.trim());
+    }
+
+    vscode.window.showInformationMessage('Papyrus script folders updated (where provided).');
   });
 
   // Configure compilers command: prompts for known paths per installed games
@@ -262,6 +314,7 @@ export function activate(context: vscode.ExtensionContext) {
     symbolProvider,
     definitionProvider,
     compileCmd,
+    configureScriptFoldersCmd,
     configureCompilersCmd,
     switchGameCmd,
     cfgChange,

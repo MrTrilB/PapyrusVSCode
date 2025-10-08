@@ -15,7 +15,8 @@
   "activationEvents": [
     "onCommand:papyrus.compileFile",
     "onCommand:papyrus.switchGame",
-    "onCommand:papyrus.configureCompilers"
+    "onCommand:papyrus.configureCompilers",
+    "onCommand:papyrus.configureScriptFolders"
   ],
   "contributes": {
     "languages": [
@@ -57,6 +58,10 @@
       {
         "command": "papyrus.configureCompilers",
         "title": "Papyrus: Configure Compiler Paths"
+      },
+      {
+        "command": "papyrus.configureScriptFolders",
+        "title": "Papyrus: Configure Script Folders"
       }
     ],
     "menus": {
@@ -102,6 +107,16 @@
           "default": "",
           "description": "Working directory to run the compiler in (optional)."
         },
+        "papyrus.compiler.includeFlag": {
+          "type": "string",
+          "default": "-i",
+          "description": "Compiler include flag used to pass script include paths (e.g. -i)."
+        },
+        "papyrus.compiler.pathSeparator": {
+          "type": "string",
+          "default": ";",
+          "description": "Path list separator when passing multiple include paths (default ';')."
+        },
         "papyrus.games": {
           "type": "object",
           "description": "Per-game compiler settings. Keys: skyrim, skyrimse, skyrimae, fallout4, fallout76, starfield.",
@@ -110,6 +125,7 @@
             "skyrim": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -123,6 +139,7 @@
             "skyrimse": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -136,6 +153,7 @@
             "skyrimae": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -149,6 +167,7 @@
             "fallout4": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -162,6 +181,7 @@
             "fallout76": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -175,6 +195,7 @@
             "starfield": {
               "type": "object",
               "properties": {
+                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "compiler": {
                   "type": "object",
                   "properties": {
@@ -197,11 +218,18 @@
     "webpack-dev": "webpack --mode development",
     "webpack-prod": "webpack --mode production",
     "package": "vsce package",
-    "lint": "echo 'No linter configured'"
+    "lint": "echo 'No linter configured'",
+    "test-compile": "tsc -p ./tsconfig.test.json",
+    "test": "npm run webpack-dev && npm run test-compile && node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.91.0",
     "@vscode/vsce": "^3.0.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "glob": "^8.1.0",
+    "mocha": "^10.7.3",
     "source-map-loader": "^5.0.0",
     "source-map-support": "^0.5.21",
     "ts-loader": "^9.5.4",
