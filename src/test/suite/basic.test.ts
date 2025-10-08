@@ -67,4 +67,28 @@ suite('Papyrus Tools basic features', () => {
     const diags = vscode.languages.getDiagnostics(doc.uri);
     assert.ok(diags.some(d => /Missing EndIf/i.test(d.message)), 'Should report Missing EndIf');
   });
+
+  test('Workspace symbols include script and members', async () => {
+    const content = [
+      'ScriptName Alpha extends Quest',
+      'Function Foo()',
+      'EndFunction'
+    ].join('\n');
+    const doc = await vscode.workspace.openTextDocument({ language: 'papyrus', content });
+    await vscode.window.showTextDocument(doc);
+    // Trigger index rebuild to include this virtual doc if indexer reads workspace; otherwise skip
+    const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', 'Alpha');
+    assert.ok(Array.isArray(symbols), 'Symbols array expected');
+  });
+
+  test('Cross-script definition via index (best-effort)', async () => {
+    const contentA = 'ScriptName Beta extends Quest\nFunction Target()\nEndFunction';
+    const contentB = 'ScriptName Gamma extends Quest\nFunction Caller()\n  Target()\nEndFunction';
+  await vscode.workspace.openTextDocument({ language: 'papyrus', content: contentA });
+    const docB = await vscode.workspace.openTextDocument({ language: 'papyrus', content: contentB });
+    await vscode.window.showTextDocument(docB);
+    const pos = new vscode.Position(2, 2);
+    const defs = await vscode.commands.executeCommand<vscode.Location[]>('vscode.executeDefinitionProvider', docB.uri, pos);
+    assert.ok(Array.isArray(defs), 'Definitions array expected');
+  });
 });

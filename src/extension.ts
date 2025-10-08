@@ -45,6 +45,63 @@ export function activate(context: vscode.ExtensionContext) {
   };
   updateGameStatus();
 
+  // --- Simple Script Indexer ---
+  type ScriptIndexEntry = {
+    scriptName: string;
+    extends?: string;
+    uri: vscode.Uri;
+    functions: { name: string; line: number }[];
+    events: { name: string; line: number }[];
+  };
+  let scriptIndex: Map<string, ScriptIndexEntry> = new Map(); // key: lowercased script name
+
+  const parsePapyrus = (uri: vscode.Uri, content: string): ScriptIndexEntry | undefined => {
+    let scriptNameMatch = /\bScriptName\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:extends\s+([A-Za-z_][A-Za-z0-9_]*))?/i.exec(content);
+    const functions: { name: string; line: number }[] = [];
+    const events: { name: string; line: number }[] = [];
+    if (!scriptNameMatch) return undefined;
+    const lines = content.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let m = /\bFunction\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(line);
+      if (m) functions.push({ name: m[1], line: i });
+      m = /\bEvent\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(line);
+      if (m) events.push({ name: m[1], line: i });
+    }
+    return {
+      scriptName: scriptNameMatch[1],
+      extends: scriptNameMatch[2],
+      uri,
+      functions,
+      events
+    };
+  };
+
+  const buildIndex = async () => {
+    scriptIndex = new Map();
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const g = getGame();
+    const key = g.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
+    const gamesCfg = cfg.get<any>('games') || {};
+    const folders: string[] = (gamesCfg[key]?.scriptPaths as string[] | undefined) || [];
+    const globPatterns = folders.map(f => new vscode.RelativePattern(vscode.Uri.file(f).fsPath, '**/*.psc'));
+    for (const pat of globPatterns) {
+      const uris = await vscode.workspace.findFiles(pat, '**/node_modules/**');
+      for (const u of uris) {
+        try {
+          const buf = await vscode.workspace.fs.readFile(u);
+          const content = Buffer.from(buf).toString('utf8');
+          const entry = parsePapyrus(u, content);
+          if (entry) scriptIndex.set(entry.scriptName.toLowerCase(), entry);
+        } catch {
+          // ignore read errors
+        }
+      }
+    }
+  };
+  // build index initially (non-blocking)
+  buildIndex();
+
   const completionProvider = vscode.languages.registerCompletionItemProvider(
     selector,
     {
@@ -127,8 +184,63 @@ export function activate(context: vscode.ExtensionContext) {
           locations.push(loc);
         }
       }
+      // If not found locally, try index: ScriptName matches identifier
+      if (locations.length === 0) {
+        const entry = scriptIndex.get(word.toLowerCase());
+        if (entry) {
+          locations.push(new vscode.Location(entry.uri, new vscode.Position(0, 0)));
+        }
+      }
       return locations;
     }
+  });
+  // Workspace symbols from index
+  const workspaceSymbols = vscode.languages.registerWorkspaceSymbolProvider({
+    provideWorkspaceSymbols(query: string) {
+      const q = query.toLowerCase();
+      const symbols: vscode.SymbolInformation[] = [];
+      for (const entry of scriptIndex.values()) {
+        if (!q || entry.scriptName.toLowerCase().includes(q)) {
+          symbols.push(new vscode.SymbolInformation(entry.scriptName, vscode.SymbolKind.Class, '', new vscode.Location(entry.uri, new vscode.Position(0, 0))));
+        }
+        for (const fn of entry.functions) {
+          const name = `${entry.scriptName}.${fn.name}`;
+          if (!q || name.toLowerCase().includes(q)) {
+            symbols.push(new vscode.SymbolInformation(name, vscode.SymbolKind.Function, entry.scriptName, new vscode.Location(entry.uri, new vscode.Position(fn.line, 0))));
+          }
+        }
+        for (const ev of entry.events) {
+          const name = `${entry.scriptName}.${ev.name}`;
+          if (!q || name.toLowerCase().includes(q)) {
+            symbols.push(new vscode.SymbolInformation(name, vscode.SymbolKind.Event, entry.scriptName, new vscode.Location(entry.uri, new vscode.Position(ev.line, 0))));
+          }
+        }
+      }
+      return symbols;
+    }
+  });
+
+  // Commands to manage index
+  const rebuildIndexCmd = vscode.commands.registerCommand('papyrus.rebuildIndex', async () => {
+    await buildIndex();
+    vscode.window.showInformationMessage('Papyrus script index rebuilt.');
+  });
+
+  const addScriptFolderCmd = vscode.commands.registerCommand('papyrus.addScriptFolder', async () => {
+    const g = getGame();
+    const key = g.toLowerCase() as 'skyrim'|'skyrimse'|'skyrimae'|'fallout4'|'fallout76'|'starfield';
+    const uri = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select Script Folder' });
+    if (!uri || uri.length === 0) return;
+    const folder = uri[0].fsPath;
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    const games = cfg.get<any>('games') || {};
+    const arr: string[] = Array.isArray(games[key]?.scriptPaths) ? [...games[key].scriptPaths] : [];
+    if (!arr.includes(folder)) arr.push(folder);
+    const next = { ...games, [key]: { ...(games[key] || {}), scriptPaths: arr } };
+    await cfg.update('games', next, target);
+    await buildIndex();
+    vscode.window.showInformationMessage(`Added script folder for ${g}.`);
   });
 
   // Basic diagnostics: block balance for If/EndIf and While/EndWhile
@@ -313,7 +425,10 @@ export function activate(context: vscode.ExtensionContext) {
     hoverProvider,
     symbolProvider,
     definitionProvider,
+  workspaceSymbols,
     compileCmd,
+  rebuildIndexCmd,
+  addScriptFolderCmd,
     configureScriptFoldersCmd,
     configureCompilersCmd,
     switchGameCmd,

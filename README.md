@@ -13,6 +13,8 @@ Features:
 - Command: "Papyrus: Compile Current File" (configurable compiler path)
  - Multi-game profiles (Skyrim/SE/AE, Fallout 4/76, Starfield)
  - Status bar profile selector and command "Papyrus: Switch Game Profile"
+ - Per-game script folders and automatic include args for compiler
+ - Script indexer powering Workspace Symbols and cross-script Go to Definition (best-effort)
 
 ## Getting started
 
@@ -46,11 +48,27 @@ Defaults used (you can edit them if your paths differ):
 - Starfield: `C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe`
 - Fallout 4: `C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe`
 
+### Script folders and indexing
+
+Set script folders to enable includes and richer IntelliSense:
+
+- Per-game paths (recommended): `papyrus.games.<profile>.scriptPaths`
+- Include flag and separator: `papyrus.compiler.includeFlag` (default `-i`), `papyrus.compiler.pathSeparator` (default `;`)
+
+Commands:
+
+- Papyrus: Configure Script Folders – prompts for Starfield/FO4 script directories
+- Papyrus: Add Script Folder – pick any folder to add to the active game profile
+- Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
+
 ### Commands
 
 - Papyrus: Compile Current File
 - Papyrus: Switch Game Profile
 - Papyrus: Configure Compiler Paths
+- Papyrus: Configure Script Folders
+- Papyrus: Add Script Folder
+- Papyrus: Rebuild Script Index
 
 ## Contributing
 PRs welcome for expanded grammar, LSP features, and integration with Papyrus compiler.

@@ -16,7 +16,9 @@
     "onCommand:papyrus.compileFile",
     "onCommand:papyrus.switchGame",
     "onCommand:papyrus.configureCompilers",
-    "onCommand:papyrus.configureScriptFolders"
+    "onCommand:papyrus.configureScriptFolders",
+    "onCommand:papyrus.rebuildIndex",
+    "onCommand:papyrus.addScriptFolder"
   ],
   "contributes": {
     "languages": [
@@ -62,6 +64,14 @@
       {
         "command": "papyrus.configureScriptFolders",
         "title": "Papyrus: Configure Script Folders"
+      },
+      {
+        "command": "papyrus.rebuildIndex",
+        "title": "Papyrus: Rebuild Script Index"
+      },
+      {
+        "command": "papyrus.addScriptFolder",
+        "title": "Papyrus: Add Script Folder"
       }
     ],
     "menus": {
