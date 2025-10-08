@@ -10,15 +10,23 @@
   "categories": [
     "Programming Languages"
   ],
-  
-  
   "main": "./out/extension.js",
+  "sideEffects": false,
+  "activationEvents": [
+    "onCommand:papyrus.compileFile"
+  ],
   "contributes": {
     "languages": [
       {
         "id": "papyrus",
-        "aliases": ["Papyrus", "papyrus"],
-        "extensions": [".psc", ".pex"],
+        "aliases": [
+          "Papyrus",
+          "papyrus"
+        ],
+        "extensions": [
+          ".psc",
+          ".pex"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -34,18 +42,66 @@
         "language": "papyrus",
         "path": "./snippets/papyrus.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "papyrus.compileFile",
+        "title": "Papyrus: Compile Current File"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceExtname == .psc",
+          "command": "papyrus.compileFile",
+          "group": "navigation@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "papyrus.compileFile",
+          "when": "true"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Papyrus Tools",
+      "properties": {
+        "papyrus.compiler.path": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to the Papyrus compiler executable (e.g. PapyrusCompiler.exe)."
+        },
+        "papyrus.compiler.args": {
+          "type": "array",
+          "default": [],
+          "description": "Additional arguments to pass to the Papyrus compiler."
+        },
+        "papyrus.compiler.cwd": {
+          "type": "string",
+          "default": "",
+          "description": "Working directory to run the compiler in (optional)."
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run webpack-prod",
+    "compile": "npm run webpack-dev",
+    "watch": "webpack --watch --mode development",
+    "webpack-dev": "webpack --mode development",
+    "webpack-prod": "webpack --mode production",
     "package": "vsce package",
     "lint": "echo 'No linter configured'"
   },
   "devDependencies": {
     "@types/vscode": "^1.91.0",
     "@vscode/vsce": "^3.0.0",
-    "typescript": "^5.6.3"
+    "source-map-loader": "^5.0.0",
+    "source-map-support": "^0.5.21",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.6.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
   }
 }
