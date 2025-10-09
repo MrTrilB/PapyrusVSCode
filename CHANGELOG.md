@@ -7,6 +7,7 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 - Load the bundled metadata on activation so IntelliSense works out of the box before configuring local script folders.
 - Preserve workspace overrides by merging user script folders after loading the packaged dataset.
 - Fixed Markdown escaping so function signatures render without stray backslashes around parentheses or square brackets in completions and hovers.
+- Mark completions/hover parameter entries with an *(optional)* badge when a default value is present and format defaults as inline code blocks.
 
 ## [0.1.10] - 2025-10-09
 - Enriched vanilla IntelliSense by extracting Papyrus Index metadata for function signatures, parameter types, and documentation.

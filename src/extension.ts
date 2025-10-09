@@ -382,8 +382,9 @@ export function activate(context: vscode.ExtensionContext) {
       md.appendMarkdown(`\n\n**Parameters**`);
       for (const param of callable.parameters) {
         const typePart = param.type ? `: \`${escapeMarkdown(param.type)}\`` : '';
-        const defaultPart = param.defaultValue ? ` (default ${escapeMarkdown(param.defaultValue)})` : '';
-        md.appendMarkdown(`\n- \`${escapeMarkdown(param.name)}\`${typePart}${defaultPart}`);
+        const optionalPart = param.defaultValue ? ' *(optional)*' : '';
+        const defaultPart = param.defaultValue ? ` (default \`${escapeMarkdown(param.defaultValue)}\`)` : '';
+        md.appendMarkdown(`\n- \`${escapeMarkdown(param.name)}\`${typePart}${optionalPart}${defaultPart}`);
       }
     }
     if (callable.returnType) {
