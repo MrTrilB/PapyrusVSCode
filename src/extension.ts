@@ -163,7 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
   };
   let scriptIndex: Map<string, ScriptIndexEntry> = new Map(); // key: lowercased script name
 
-  const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}\[\]#+\-|!]/g, '\\$&');
+  const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}#+\-|!]/g, '\\$&');
 
   const buildCallableSignature = (callable: PapyrusCallableInfo, kind: 'Function' | 'Event'): string => {
     const params = callable.parameters.map(param => {
