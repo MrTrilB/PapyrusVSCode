@@ -2,6 +2,16 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [0.1.11] - 2025-10-09
+- Bundled Papyrus Index vanilla and extender script snapshots inside `resources/` for Skyrim, Fallout 4, and Starfield.
+- Load the bundled metadata on activation so IntelliSense works out of the box before configuring local script folders.
+- Preserve workspace overrides by merging user script folders after loading the packaged dataset.
+
+## [0.1.10] - 2025-10-09
+- Enriched vanilla IntelliSense by extracting Papyrus Index metadata for function signatures, parameter types, and documentation.
+- Starfield member completions now surface snippets, Markdown docs, and signature details drawn from vanilla scripts.
+- Script hovers list vanilla documentation blocks along with refined function/event summaries.
+
 ## [0.1.9] - 2025-10-09
 - Expanded hover tooltips to include script inheritance, source location, and Starfield function summaries.
 - Added regression coverage for the enriched hover behaviour and documentation updates.

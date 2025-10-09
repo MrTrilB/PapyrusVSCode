@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.9",
+  "version": "0.1.11",
   "publisher": "your-name",
   "repository": {
     "type": "git",
@@ -165,7 +165,14 @@
       "properties": {
         "papyrus.game": {
           "type": "string",
-          "enum": ["Skyrim", "SkyrimSE", "SkyrimAE", "Fallout4", "Fallout76", "Starfield"],
+          "enum": [
+            "Skyrim",
+            "SkyrimSE",
+            "SkyrimAE",
+            "Fallout4",
+            "Fallout76",
+            "Starfield"
+          ],
           "default": "Skyrim",
           "description": "Active game profile to use for Papyrus features and compiler settings.",
           "markdownDescription": "Active game profile to use for Papyrus features and compiler settings. Selecting a game automatically applies default script paths and compiler locations for that title.",
@@ -178,13 +185,35 @@
           "default": {},
           "order": 10,
           "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Skyrim scripts folders (typically Data/\\Scripts/Source)." },
+            "scriptPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "description": "Skyrim scripts folders (typically Data/\\Scripts/Source)."
+            },
             "compiler": {
               "type": "object",
               "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Skyrim." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Skyrim." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Skyrim compiler (optional)." }
+                "path": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Path to PapyrusCompiler.exe for Skyrim."
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [],
+                  "description": "Additional compiler args for Skyrim."
+                },
+                "cwd": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Working directory to run the Skyrim compiler (optional)."
+                }
               }
             }
           }
@@ -196,13 +225,35 @@
           "default": {},
           "order": 11,
           "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Fallout 4 scripts folders (typically Data/\\Scripts/Source)." },
+            "scriptPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "description": "Fallout 4 scripts folders (typically Data/\\Scripts/Source)."
+            },
             "compiler": {
               "type": "object",
               "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Fallout 4." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Fallout 4." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Fallout 4 compiler (optional)." }
+                "path": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Path to PapyrusCompiler.exe for Fallout 4."
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [],
+                  "description": "Additional compiler args for Fallout 4."
+                },
+                "cwd": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Working directory to run the Fallout 4 compiler (optional)."
+                }
               }
             }
           }
@@ -214,13 +265,35 @@
           "default": {},
           "order": 12,
           "properties": {
-            "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Starfield scripts folders (typically Data/\\Scripts/Source)." },
+            "scriptPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "description": "Starfield scripts folders (typically Data/\\Scripts/Source)."
+            },
             "compiler": {
               "type": "object",
               "properties": {
-                "path": { "type": "string", "default": "", "description": "Path to PapyrusCompiler.exe for Starfield." },
-                "args": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Additional compiler args for Starfield." },
-                "cwd": { "type": "string", "default": "", "description": "Working directory to run the Starfield compiler (optional)." }
+                "path": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Path to PapyrusCompiler.exe for Starfield."
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [],
+                  "description": "Additional compiler args for Starfield."
+                },
+                "cwd": {
+                  "type": "string",
+                  "default": "",
+                  "description": "Working directory to run the Starfield compiler (optional)."
+                }
               }
             }
           }
@@ -265,13 +338,31 @@
             "skyrim": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -279,13 +370,31 @@
             "skyrimse": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -293,13 +402,31 @@
             "skyrimae": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -307,13 +434,31 @@
             "fallout4": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -321,13 +466,31 @@
             "fallout76": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -335,13 +498,31 @@
             "starfield": {
               "type": "object",
               "properties": {
-                "scriptPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+                "scriptPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
                 "compiler": {
                   "type": "object",
                   "properties": {
-                    "path": { "type": "string", "default": "" },
-                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "cwd": { "type": "string", "default": "" }
+                    "path": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": []
+                    },
+                    "cwd": {
+                      "type": "string",
+                      "default": ""
+                    }
                   }
                 }
               }
@@ -361,7 +542,9 @@
             },
             "additionalBasePaths": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "default": [],
               "description": "Additional base library paths. You can provide either the library root, 'steamapps', or 'steamapps/common'."
             },
@@ -370,17 +553,41 @@
               "default": false,
               "description": "When true, include both Data\\Scripts\\Source and Data\\Scripts if both exist. Otherwise prefer Source only."
             },
-            "enableSkyrim": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim." },
-            "enableSkyrimSE": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim Special Edition." },
-            "enableSkyrimAE": { "type": "boolean", "default": true, "description": "Enable auto-detect for Skyrim Anniversary Edition (shares SE path)." },
-            "enableFallout4": { "type": "boolean", "default": true, "description": "Enable auto-detect for Fallout 4." },
-            "enableFallout76": { "type": "boolean", "default": true, "description": "Enable auto-detect for Fallout 76." },
-            "enableStarfield": { "type": "boolean", "default": true, "description": "Enable auto-detect for Starfield." }
+            "enableSkyrim": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Skyrim."
+            },
+            "enableSkyrimSE": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Skyrim Special Edition."
+            },
+            "enableSkyrimAE": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Skyrim Anniversary Edition (shares SE path)."
+            },
+            "enableFallout4": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Fallout 4."
+            },
+            "enableFallout76": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Fallout 76."
+            },
+            "enableStarfield": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable auto-detect for Starfield."
             }
           }
         }
       }
-    },
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run webpack-prod",
     "compile": "npm run webpack-dev",
@@ -393,11 +600,11 @@
     "test": "npm run webpack-dev && npm run test-compile && node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.91.0",
-    "@vscode/vsce": "^3.0.0",
-    "@vscode/test-electron": "^2.4.1",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.6",
+    "@types/vscode": "^1.91.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.0.0",
     "glob": "^8.1.0",
     "mocha": "^10.7.3",
     "source-map-loader": "^5.0.0",

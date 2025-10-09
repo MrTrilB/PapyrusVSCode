@@ -7,6 +7,7 @@ Features:
 - Language configuration (comments/brackets)
 - Snippets for common constructs
 - Enhanced completions and hovers for keywords, built-in types, and indexed Starfield scripts/functions
+- Built-in Papyrus Index dataset (vanilla + extender APIs) for Skyrim, Fallout 4, and Starfield so completions and hovers work out of the box
 - Starfield script function completions (e.g. `Utility.GetCurrentGameTime`) when the Starfield profile is active
 - Document symbols (Outline) for functions/events/properties
 - Go to Definition within a file for functions/events
@@ -53,7 +54,15 @@ Defaults used (you can edit them if your paths differ):
 
 ### Script folders and indexing
 
-Set script folders to enable includes and richer IntelliSense:
+Set script folders to enable includes and richer IntelliSense (Papyrus Index data ships with the extension, and local folders layer on top):
+
+### Bundled resources
+
+- `resources/Starfield/*`: Starfield vanilla, SFSE, and INI Manipulator API scripts
+- `resources/Fallout4/vanilla`: Fallout 4 vanilla API scripts
+- `resources/SkyrimSE/vanilla`: Skyrim SE/AE vanilla API scripts
+
+Papyrus Tools loads these snapshots into the index on activation. Any script paths you configure are merged on top so local overrides win.
 
 - Per-game paths (recommended): `papyrus.games.<profile>.scriptPaths`
 - Include flag and separator: `papyrus.compiler.includeFlag` (default `-i`), `papyrus.compiler.pathSeparator` (default `;`)

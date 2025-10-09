@@ -81,6 +81,7 @@ const PAPYRUS_TYPES = [
 
 export function activate(context: vscode.ExtensionContext) {
   const selector: vscode.DocumentSelector = { language: 'papyrus', scheme: '*' };
+  const resourcesRoot = path.join(context.extensionPath, 'resources');
 
   const getGame = (): GameProfile => {
     const cfg = vscode.workspace.getConfiguration('papyrus');
@@ -136,42 +137,273 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   // --- Simple Script Indexer ---
+  type PapyrusParameterInfo = {
+    name: string;
+    type?: string;
+    defaultValue?: string;
+  };
+
+  type PapyrusCallableInfo = {
+    name: string;
+    line: number;
+    signature: string;
+    parameters: PapyrusParameterInfo[];
+    documentation?: string;
+    returnType?: string;
+    modifiers?: string[];
+  };
+
   type ScriptIndexEntry = {
     scriptName: string;
     extends?: string;
+    documentation?: string;
     uri: vscode.Uri;
-    functions: { name: string; line: number }[];
-    events: { name: string; line: number }[];
+    functions: PapyrusCallableInfo[];
+    events: PapyrusCallableInfo[];
   };
   let scriptIndex: Map<string, ScriptIndexEntry> = new Map(); // key: lowercased script name
 
+  const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}\[\]()#+\-|!]/g, '\\$&');
+
+  const buildCallableSignature = (callable: PapyrusCallableInfo, kind: 'Function' | 'Event'): string => {
+    const params = callable.parameters.map(param => {
+      const pieces = [] as string[];
+      if (param.type) pieces.push(param.type);
+      pieces.push(param.name);
+      if (param.defaultValue) pieces.push(`= ${param.defaultValue}`);
+      return pieces.join(' ');
+    }).join(', ');
+    const modifiers = callable.modifiers?.length ? ` ${callable.modifiers.join(' ')}` : '';
+    const returnPart = callable.returnType ? `${callable.returnType} ` : 'Function ';
+    const head = kind === 'Event' ? `Event ${callable.name}` : `${returnPart}${callable.name}`;
+    return `${head}(${params})${modifiers}`.trim();
+  };
+
+  const parseParameters = (raw: string): PapyrusParameterInfo[] => {
+    if (!raw.trim()) return [];
+    return raw.split(',').map(segment => {
+      const part = segment.trim();
+      if (!part) return { name: '' };
+      const [lhs, rhs] = part.split('=').map(p => p.trim());
+      const tokens = lhs.split(/\s+/).filter(Boolean);
+      const name = tokens.pop() || '';
+      const type = tokens.join(' ') || undefined;
+      return {
+        name,
+        type,
+        defaultValue: rhs || undefined
+      } satisfies PapyrusParameterInfo;
+    }).filter(param => param.name !== '');
+  };
+
+  const stripInlineComments = (text: string): string => {
+    const semiIndex = text.indexOf(';');
+    if (semiIndex >= 0) return text.slice(0, semiIndex);
+    const slashIndex = text.indexOf('//');
+    if (slashIndex >= 0) return text.slice(0, slashIndex);
+    return text;
+  };
+
+  const extractDocBlock = (lines: string[], startLine: number): string | undefined => {
+    const docLines: string[] = [];
+    for (let i = startLine - 1; i >= 0; i--) {
+      const raw = lines[i];
+      if (!raw.trim()) {
+        if (docLines.length > 0) break;
+        continue;
+      }
+      const trimmed = raw.trim();
+      const commentMatch = /^;+\s?(.*)$/.exec(trimmed) || /^\/\/\s?(.*)$/.exec(trimmed);
+      if (commentMatch) {
+        docLines.unshift(commentMatch[1]);
+        continue;
+      }
+      if (/^\{/.test(trimmed) || /^}/.test(trimmed)) {
+        // Skip accidental block comment delimiters without including them
+        continue;
+      }
+      break;
+    }
+    if (docLines.length === 0) return undefined;
+    return docLines.join('\n');
+  };
+
   const parsePapyrus = (uri: vscode.Uri, content: string): ScriptIndexEntry | undefined => {
-    let scriptNameMatch = /\bScriptName\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:extends\s+([A-Za-z_][A-Za-z0-9_]*))?/i.exec(content);
-    const functions: { name: string; line: number }[] = [];
-    const events: { name: string; line: number }[] = [];
+    const scriptNameMatch = /\bScriptName\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:extends\s+([A-Za-z_][A-Za-z0-9_]*))?/i.exec(content);
     if (!scriptNameMatch) return undefined;
+
     const lines = content.split(/\r?\n/);
+    const functions: PapyrusCallableInfo[] = [];
+    const events: PapyrusCallableInfo[] = [];
+    const functionRegex = /^\s*(?:(?<ret>[A-Za-z_][A-Za-z0-9_]*\s*(?:\[\])?)\s+)?Function\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?<tail>.*)$/i;
+    const eventRegex = /^\s*Event\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?<tail>.*)$/i;
+
+    let scriptDocumentation: string | undefined;
+    const scriptLineIndex = lines.findIndex(line => /\bScriptName\b/i.test(line));
+    if (scriptLineIndex > 0) {
+      scriptDocumentation = extractDocBlock(lines, scriptLineIndex);
+    }
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      let m = /\bFunction\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(line);
-      if (m) functions.push({ name: m[1], line: i });
-      m = /\bEvent\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(line);
-      if (m) events.push({ name: m[1], line: i });
+      const functionMatch = functionRegex.exec(line);
+      if (functionMatch && functionMatch.groups) {
+        const params = parseParameters(functionMatch.groups.params || '');
+        const tail = stripInlineComments(functionMatch.groups.tail || '');
+        const modifiers = tail.split(/\s+/).map(t => t.trim()).filter(Boolean);
+        const returnType = functionMatch.groups.ret?.trim();
+        const callable: PapyrusCallableInfo = {
+          name: functionMatch.groups.name,
+          line: i,
+          parameters: params,
+          returnType,
+          modifiers,
+          signature: '',
+          documentation: extractDocBlock(lines, i)
+        };
+    callable.signature = buildCallableSignature(callable, 'Function');
+        functions.push(callable);
+        continue;
+      }
+
+      const eventMatch = eventRegex.exec(line);
+      if (eventMatch && eventMatch.groups) {
+        const params = parseParameters(eventMatch.groups.params || '');
+        const tail = stripInlineComments(eventMatch.groups.tail || '');
+        const modifiers = tail.split(/\s+/).map(t => t.trim()).filter(Boolean);
+        const callable: PapyrusCallableInfo = {
+          name: eventMatch.groups.name,
+          line: i,
+          parameters: params,
+          modifiers,
+          signature: '',
+          documentation: extractDocBlock(lines, i)
+        };
+    callable.signature = buildCallableSignature(callable, 'Event');
+        events.push(callable);
+      }
     }
+
     return {
       scriptName: scriptNameMatch[1],
       extends: scriptNameMatch[2],
+      documentation: scriptDocumentation,
       uri,
       functions,
       events
     };
   };
 
+  const getBundledPapyrusRoots = (game: GameProfile): string[] => {
+    if (!fs.existsSync(resourcesRoot)) return [];
+    const relsByGame: Record<GameProfile, string[]> = {
+      Skyrim: ['SkyrimSE/vanilla'],
+      SkyrimSE: ['SkyrimSE/vanilla'],
+      SkyrimAE: ['SkyrimSE/vanilla'],
+      Fallout4: ['Fallout4/vanilla'],
+      Fallout76: [],
+      Starfield: ['Starfield/vanilla', 'Starfield/sfse', 'Starfield/ini-manipulator']
+    };
+    const rels = relsByGame[game] || [];
+    const roots: string[] = [];
+    for (const rel of rels) {
+      const full = path.join(resourcesRoot, rel);
+      if (fs.existsSync(full)) roots.push(full);
+    }
+    return roots;
+  };
+
+  const enumeratePapyrusFiles = (roots: string[]): string[] => {
+    const files: string[] = [];
+    const stack = [...roots];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (!current) continue;
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(current, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const ent of entries) {
+        const full = path.join(current, ent.name);
+        if (ent.isDirectory()) {
+          if (ent.name === 'node_modules' || ent.name.startsWith('.')) continue;
+          stack.push(full);
+        } else if (ent.isFile() && /\.psc$/i.test(ent.name)) {
+          files.push(full);
+        }
+      }
+    }
+    return files;
+  };
+
+  const loadBundledScripts = (game: GameProfile) => {
+    const roots = getBundledPapyrusRoots(game);
+    if (roots.length === 0) return;
+    const files = enumeratePapyrusFiles(roots);
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        const entry = parsePapyrus(vscode.Uri.file(file), content);
+        if (!entry) continue;
+        const key = entry.scriptName.toLowerCase();
+        if (!scriptIndex.has(key)) {
+          scriptIndex.set(key, entry);
+        }
+      } catch {
+        // ignore unreadable files
+      }
+    }
+  };
+
+  const buildCallableSnippet = (callable: PapyrusCallableInfo): vscode.SnippetString => {
+    if (callable.parameters.length === 0) {
+      return new vscode.SnippetString(`${callable.name}()$0`);
+    }
+    const placeholders = callable.parameters.map((param, idx) => {
+      const placeholderName = param.name || `param${idx + 1}`;
+      return `\${${idx + 1}:${placeholderName}}`;
+    }).join(', ');
+    return new vscode.SnippetString(`${callable.name}(${placeholders})$0`);
+  };
+
+  const renderCallableMarkdown = (kind: 'Function' | 'Event', callable: PapyrusCallableInfo, scriptEntry: ScriptIndexEntry): vscode.MarkdownString => {
+    const md = new vscode.MarkdownString();
+    md.isTrusted = false;
+    const rel = vscode.workspace.asRelativePath(scriptEntry.uri, false);
+    const signature = escapeMarkdown(callable.signature || `${callable.name}()`);
+    md.appendMarkdown(`**${kind}** \`${escapeMarkdown(callable.name)}\``);
+    md.appendMarkdown(`\nDefined in \`${escapeMarkdown(scriptEntry.scriptName)}.psc\` — ${escapeMarkdown(rel)} (line ${callable.line + 1})`);
+    if (signature) {
+      md.appendMarkdown(`\n\n\`\`\`papyrus\n${signature}\n\`\`\``);
+    }
+    if (callable.parameters.length > 0) {
+      md.appendMarkdown(`\n\n**Parameters**`);
+      for (const param of callable.parameters) {
+        const typePart = param.type ? `: \`${escapeMarkdown(param.type)}\`` : '';
+        const defaultPart = param.defaultValue ? ` (default ${escapeMarkdown(param.defaultValue)})` : '';
+        md.appendMarkdown(`\n- \`${escapeMarkdown(param.name)}\`${typePart}${defaultPart}`);
+      }
+    }
+    if (callable.returnType) {
+      md.appendMarkdown(`\n\n**Returns** \`${escapeMarkdown(callable.returnType)}\``);
+    }
+    if (callable.documentation) {
+      md.appendMarkdown(`\n\n${escapeMarkdown(callable.documentation).replace(/\n/g, '\n\n')}`);
+    }
+    if (callable.modifiers && callable.modifiers.length > 0) {
+      md.appendMarkdown(`\n\nModifiers: ${callable.modifiers.map(mod => `\`${escapeMarkdown(mod)}\``).join(' ')}`);
+    }
+    return md;
+  };
+
   const buildIndex = async () => {
     scriptIndex = new Map();
+    const game = getGame();
+    loadBundledScripts(game);
     const cfg = vscode.workspace.getConfiguration('papyrus');
-    const g = getGame();
-    const merged = getMergedGameConfig(cfg, g);
+    const merged = getMergedGameConfig(cfg, game);
     const folders: string[] = merged.scriptPaths || [];
     const globPatterns = folders.map(f => new vscode.RelativePattern(vscode.Uri.file(f).fsPath, '**/*.psc'));
     for (const pat of globPatterns) {
@@ -300,8 +532,9 @@ export function activate(context: vscode.ExtensionContext) {
                 if (seen.has(lower)) continue;
                 seen.add(lower);
                 const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Method);
-                item.detail = `${entry.scriptName}.psc`;
-                item.insertText = new vscode.SnippetString(`${fn.name}()$0`);
+                item.detail = fn.signature || `${entry.scriptName}.${fn.name}`;
+                item.insertText = buildCallableSnippet(fn);
+                item.documentation = renderCallableMarkdown('Function', fn, entry);
                 if (replaceRange) item.range = replaceRange;
                 item.sortText = `0_${fn.name}`;
                 items.push(item);
@@ -311,7 +544,8 @@ export function activate(context: vscode.ExtensionContext) {
                 if (seen.has(lower)) continue;
                 seen.add(lower);
                 const item = new vscode.CompletionItem(ev.name, vscode.CompletionItemKind.Event);
-                item.detail = `${entry.scriptName}.psc (event)`;
+                item.detail = ev.signature || `${entry.scriptName}.${ev.name}`;
+                item.documentation = renderCallableMarkdown('Event', ev, entry);
                 if (replaceRange) item.range = replaceRange;
                 item.sortText = `0_${ev.name}`;
                 items.push(item);
@@ -343,17 +577,20 @@ export function activate(context: vscode.ExtensionContext) {
       if (scriptEntry) {
         const location = vscode.workspace.asRelativePath(scriptEntry.uri, false);
         const md = new vscode.MarkdownString();
-        md.appendMarkdown(`**Script** \`${scriptEntry.scriptName}\``);
+        md.appendMarkdown(`**Script** \`${escapeMarkdown(scriptEntry.scriptName)}\``);
         if (scriptEntry.extends) {
-          md.appendMarkdown(`  \nExtends: \`${scriptEntry.extends}\``);
+          md.appendMarkdown(`\nExtends: \`${escapeMarkdown(scriptEntry.extends)}\``);
         }
-        md.appendMarkdown(`  \nSource: ${location}`);
+        md.appendMarkdown(`\nSource: ${escapeMarkdown(location)}`);
+        if (scriptEntry.documentation) {
+          md.appendMarkdown(`\n\n${escapeMarkdown(scriptEntry.documentation).replace(/\n/g, '\n\n')}`);
+        }
         const fnCount = scriptEntry.functions.length;
         const evCount = scriptEntry.events.length;
         if (fnCount > 0 || evCount > 0) {
           md.appendMarkdown('\n\n---\n');
           if (fnCount > 0) {
-            const fnList = scriptEntry.functions.slice(0, 6).map(fn => `- \`${fn.name}()\``).join('\n');
+            const fnList = scriptEntry.functions.slice(0, 6).map(fn => `- \`${escapeMarkdown(fn.signature || `${fn.name}()`)}\``).join('\n');
             md.appendMarkdown(`**Functions**\n${fnList}`);
             if (fnCount > 6) {
               md.appendMarkdown(`\n…(+${fnCount - 6} more)`);
@@ -361,7 +598,7 @@ export function activate(context: vscode.ExtensionContext) {
           }
           if (evCount > 0) {
             if (fnCount > 0) md.appendMarkdown('\n\n');
-            const evList = scriptEntry.events.slice(0, 6).map(ev => `- \`${ev.name}\``).join('\n');
+            const evList = scriptEntry.events.slice(0, 6).map(ev => `- \`${escapeMarkdown(ev.signature || ev.name)}\``).join('\n');
             md.appendMarkdown(`**Events**\n${evList}`);
             if (evCount > 6) {
               md.appendMarkdown(`\n…(+${evCount - 6} more)`);
@@ -372,32 +609,30 @@ export function activate(context: vscode.ExtensionContext) {
         return new vscode.Hover(md, range);
       }
 
-      const functionHits: Array<{ entry: ScriptIndexEntry; kind: 'Function' | 'Event'; name: string; line: number }> = [];
+      const functionHits: Array<{ entry: ScriptIndexEntry; kind: 'Function' | 'Event'; callable: PapyrusCallableInfo }> = [];
       for (const entry of scriptIndex.values()) {
         for (const fn of entry.functions) {
           if (fn.name.toLowerCase() === lower) {
-            functionHits.push({ entry, kind: 'Function', name: fn.name, line: fn.line });
+            functionHits.push({ entry, kind: 'Function', callable: fn });
           }
         }
         for (const ev of entry.events) {
           if (ev.name.toLowerCase() === lower) {
-            functionHits.push({ entry, kind: 'Event', name: ev.name, line: ev.line });
+            functionHits.push({ entry, kind: 'Event', callable: ev });
           }
         }
       }
       if (functionHits.length > 0) {
-        const md = new vscode.MarkdownString();
         const primary = functionHits[0];
-        md.appendMarkdown(`**${primary.kind}** \`${word}\``);
-        const entries = functionHits.slice(0, 5).map(hit => {
-          const rel = vscode.workspace.asRelativePath(hit.entry.uri, false);
-          return `- ${hit.entry.scriptName}.psc (line ${hit.line + 1}) — ${rel}`;
-        }).join('\n');
-        md.appendMarkdown(`\n${entries}`);
-        if (functionHits.length > 5) {
-          md.appendMarkdown(`\n…(+${functionHits.length - 5} more matches)`);
+        const md = renderCallableMarkdown(primary.kind, primary.callable, primary.entry);
+        if (functionHits.length > 1) {
+          md.appendMarkdown('\n\n---\n**Other matches**');
+          const others = functionHits.slice(1).map(hit => {
+            const rel = vscode.workspace.asRelativePath(hit.entry.uri, false);
+            return `\n- ${escapeMarkdown(hit.entry.scriptName)}.psc (line ${hit.callable.line + 1}) — ${escapeMarkdown(rel)}`;
+          }).join('');
+          md.appendMarkdown(others);
         }
-        md.isTrusted = false;
         return new vscode.Hover(md, range);
       }
       return undefined;
