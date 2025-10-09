@@ -6,6 +6,7 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 - Bundled Papyrus Index vanilla and extender script snapshots inside `resources/` for Skyrim, Fallout 4, and Starfield.
 - Load the bundled metadata on activation so IntelliSense works out of the box before configuring local script folders.
 - Preserve workspace overrides by merging user script folders after loading the packaged dataset.
+- Fixed Markdown escaping so function signatures render without stray backslashes in completions and hovers.
 
 ## [0.1.10] - 2025-10-09
 - Enriched vanilla IntelliSense by extracting Papyrus Index metadata for function signatures, parameter types, and documentation.
