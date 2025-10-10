@@ -2,8 +2,8 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.11",
-  "publisher": "your-name",
+  "version": "0.1.22",
+  "publisher": "MrTrilB",
   "repository": {
     "type": "git",
     "url": "https://github.com/MrTrilB/PapyrusVSCode.git"
@@ -160,434 +160,504 @@
         }
       ]
     },
-    "configuration": {
-      "title": "Papyrus Tools",
-      "properties": {
-        "papyrus.game": {
-          "type": "string",
-          "enum": [
-            "Skyrim",
-            "SkyrimSE",
-            "SkyrimAE",
-            "Fallout4",
-            "Fallout76",
-            "Starfield"
-          ],
-          "default": "Skyrim",
-          "description": "Active game profile to use for Papyrus features and compiler settings.",
-          "markdownDescription": "Active game profile to use for Papyrus features and compiler settings. Selecting a game automatically applies default script paths and compiler locations for that title.",
-          "order": 0
-        },
-        "papyrus.skyrim": {
-          "type": "object",
-          "description": "Convenience defaults for Skyrim, SkyrimSE, and SkyrimAE.",
-          "markdownDescription": "Convenience defaults for **Skyrim**-family games. These values are pre-populated when you select a Skyrim profile.",
-          "default": {},
-          "order": 10,
-          "properties": {
-            "scriptPaths": {
-              "type": "array",
-              "items": {
-                "type": "string"
+    "views": {
+      "explorer": [
+        {
+          "id": "papyrusCommandsView",
+          "name": "Papyrus Commands",
+          "icon": "Assets/Images/Papyrus Tools.svg"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "title": "General",
+        "properties": {
+          "papyrus.defaultGame": {
+            "type": "string",
+            "enum": [
+              "Skyrim",
+              "SkyrimSE",
+              "SkyrimAE",
+              "Fallout4",
+              "Fallout76",
+              "Starfield"
+            ],
+            "default": "Starfield",
+            "description": "Choose your current game so Papyrus Tools knows which compiler and script paths to use, along with any game specific features.",
+            "markdownDescription": "Choose your current game so Papyrus Tools knows which compiler and script paths to use, along with any game specific features.",
+            "order": 0
+          }
+        }
+      },
+      {
+        "title": "Fallout",
+        "properties": {
+          "papyrus.fallout.fallout4": {
+            "type": "object",
+            "default": {},
+            "title": "Fallout 4",
+            "properties": {
+              "papyrus.Fallout.fallout4.autoDetect": {
+                "type": "boolean",
+                "default": true,
+                "description": "Automatically detect Fallout 4 installation and script paths.",
+                "markdownDescription": "Automatically detect **Fallout 4** installation and script paths.",
+                "order": 1
               },
-              "default": [],
-              "description": "Skyrim scripts folders (typically Data/\\Scripts/Source)."
-            },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Path to PapyrusCompiler.exe for Skyrim."
+              "papyrus.Fallout.fallout4.CompilerDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to PapyrusCompiler.exe for Fallout 4.",
+                "markdownDescription": "Path to **PapyrusCompiler.exe** for Fallout 4.",
+                "order": 2
+              },
+              "papyrus.fallout.fallout4.compiler.includeFlags": {
+                "type": "array",
+                "default": [],
+                "description": "Additional flags to pass to the Fallout 4 Papyrus compiler.",
+                "markdownDescription": "Additional flags to pass to the **Fallout 4 Papyrus compiler**.",
+                "items": {
+                  "type": "string"
                 },
-                "args": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": [],
-                  "description": "Additional compiler args for Skyrim."
+                "order": 2.5
+              },
+              "papyrus.fallout.fallout4.compiler.args": {
+                "type": "array",
+                "default": [],
+                "description": "Additional arguments to pass to the Fallout 4 Papyrus compiler.",
+                "markdownDescription": "Additional arguments to pass to the **Fallout 4 Papyrus compiler**.",
+                "items": {
+                  "type": "string"
                 },
-                "cwd": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Working directory to run the Skyrim compiler (optional)."
-                }
+                "order": 2.6
+              },
+              "papyrus.Fallout.fallout4.ScriptSourceDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to Papyrus scripts for Fallout 4.",
+                "markdownDescription": "Path to **Papyrus scripts** for Fallout 4.",
+                "order": 3
+              },
+              "papyrus.fallout.fallout4.compiler.namespaceworkingdirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Fallout 4 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.5
+              },
+              "papyrus.fallout.fallout4.compiler.namespaceworkingdirectoryfragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Fallout 4 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.6
+              },
+              "papyrus.fallout.fallout4.compiler.outputDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+                "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+                "order": 3.7
+              },
+              "papyrus.fallout.fallout4.compiler.outputDirectoryFragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+                "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+                "order": 3.8
               }
             }
-          }
-        },
-        "papyrus.fallout4": {
-          "type": "object",
-          "description": "Convenience defaults for Fallout 4.",
-          "markdownDescription": "Convenience defaults for **Fallout 4**. Values are pre-populated when you switch to the Fallout 4 profile.",
-          "default": {},
-          "order": 11,
-          "properties": {
-            "scriptPaths": {
-              "type": "array",
-              "items": {
-                "type": "string"
+          },
+          "papyrus.fallout.fallout76": {
+            "type": "object",
+            "default": {},
+            "title": "Fallout 76",
+            "properties": {
+              "papyrus.Fallout.fallout76.autoDetect": {
+                "type": "boolean",
+                "default": true,
+                "description": "Automatically detect Fallout 76 installation and script paths.",
+                "markdownDescription": "Automatically detect **Fallout 76** installation and script paths.",
+                "order": 1
               },
-              "default": [],
-              "description": "Fallout 4 scripts folders (typically Data/\\Scripts/Source)."
-            },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Path to PapyrusCompiler.exe for Fallout 4."
-                },
-                "args": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": [],
-                  "description": "Additional compiler args for Fallout 4."
-                },
-                "cwd": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Working directory to run the Fallout 4 compiler (optional)."
-                }
-              }
-            }
-          }
-        },
-        "papyrus.starfield": {
-          "type": "object",
-          "description": "Convenience defaults for Starfield.",
-          "markdownDescription": "Convenience defaults for **Starfield**. Values are pre-populated when you switch to the Starfield profile.",
-          "default": {},
-          "order": 12,
-          "properties": {
-            "scriptPaths": {
-              "type": "array",
-              "items": {
-                "type": "string"
+              "papyrus.Fallout.fallout76.CompilerDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to PapyrusCompiler.exe for Fallout 76.",
+                "markdownDescription": "Path to **PapyrusCompiler.exe** for Fallout 76.",
+                "order": 2
               },
-              "default": [],
-              "description": "Starfield scripts folders (typically Data/\\Scripts/Source)."
-            },
-            "compiler": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Path to PapyrusCompiler.exe for Starfield."
+              "papyrus.Fallout.fallout76.compiler.includeFlags": {
+                "type": "array",
+                "default": [],
+                "description": "Additional flags to pass to the Fallout 76 Papyrus compiler.",
+                "markdownDescription": "Additional flags to pass to the **Fallout 76 Papyrus compiler**.",
+                "items": {
+                  "type": "string"
                 },
-                "args": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": [],
-                  "description": "Additional compiler args for Starfield."
-                },
-                "cwd": {
-                  "type": "string",
-                  "default": "",
-                  "description": "Working directory to run the Starfield compiler (optional)."
-                }
-              }
-            }
-          }
-        },
-        "papyrus.compiler.path": {
-          "type": "string",
-          "default": "",
-          "description": "Full path to the Papyrus compiler executable (e.g. PapyrusCompiler.exe).",
-          "order": 20
-        },
-        "papyrus.compiler.args": {
-          "type": "array",
-          "default": [],
-          "description": "Additional arguments to pass to the Papyrus compiler.",
-          "order": 21
-        },
-        "papyrus.compiler.cwd": {
-          "type": "string",
-          "default": "",
-          "description": "Working directory to run the compiler in (optional).",
-          "order": 22
-        },
-        "papyrus.compiler.includeFlag": {
-          "type": "string",
-          "default": "-i",
-          "description": "Compiler include flag used to pass script include paths (e.g. -i).",
-          "order": 23
-        },
-        "papyrus.compiler.pathSeparator": {
-          "type": "string",
-          "default": ";",
-          "description": "Path list separator when passing multiple include paths (default ';').",
-          "order": 24
-        },
-        "papyrus.games": {
-          "type": "object",
-          "description": "Per-game compiler settings. Keys: skyrim, skyrimse, skyrimae, fallout4, fallout76, starfield.",
-          "markdownDescription": "Advanced: raw per-game profile data backing the convenience categories. You usually do not need to edit this manually.",
-          "default": {},
-          "order": 80,
-          "properties": {
-            "skyrim": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            },
-            "skyrimse": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            },
-            "skyrimae": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            },
-            "fallout4": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            },
-            "fallout76": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            },
-            "starfield": {
-              "type": "object",
-              "properties": {
-                "scriptPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "default": []
-                },
-                "compiler": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "default": ""
-                    },
-                    "args": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "default": []
-                    },
-                    "cwd": {
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "papyrus.autoDetect": {
-          "type": "object",
-          "description": "Auto-detection settings for game paths.",
-          "default": {},
-          "order": 90,
-          "properties": {
-            "useLibraryFoldersVdf": {
-              "type": "boolean",
-              "default": true,
-              "description": "Parse Steam libraryfolders.vdf to discover additional library locations."
-            },
-            "additionalBasePaths": {
-              "type": "array",
-              "items": {
-                "type": "string"
+                "order": 2.5
               },
-              "default": [],
-              "description": "Additional base library paths. You can provide either the library root, 'steamapps', or 'steamapps/common'."
-            },
-            "includeBothScriptPaths": {
-              "type": "boolean",
-              "default": false,
-              "description": "When true, include both Data\\Scripts\\Source and Data\\Scripts if both exist. Otherwise prefer Source only."
-            },
-            "enableSkyrim": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Skyrim."
-            },
-            "enableSkyrimSE": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Skyrim Special Edition."
-            },
-            "enableSkyrimAE": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Skyrim Anniversary Edition (shares SE path)."
-            },
-            "enableFallout4": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Fallout 4."
-            },
-            "enableFallout76": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Fallout 76."
-            },
-            "enableStarfield": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable auto-detect for Starfield."
+              "papyrus.Fallout.fallout76.compiler.args": {
+                "type": "array",
+                "default": [],
+                "description": "Additional arguments to pass to the Fallout 76 Papyrus compiler.",
+                "markdownDescription": "Additional arguments to pass to the **Fallout 76 Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.6
+              },
+              "papyrus.Fallout.fallout76.ScriptSourceDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to Papyrus scripts for Fallout 76.",
+                "markdownDescription": "Path to **Papyrus scripts** for Fallout 76.",
+                "order": 3
+              },
+              "papyrus.fallout.fallout76.compiler.namespaceworkingdirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Fallout 76 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Fallout 76 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.5
+              },
+              "papyrus.fallout.fallout76.compiler.namespaceworkingdirectoryfragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Fallout 76 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Fallout 76 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.6
+              },
+              "papyrus.fallout.fallout76.compiler.outputDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 76's script loading.",
+                "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 76's script loading.",
+                "order": 3.7
+              },
+              "papyrus.fallout.fallout76.compiler.outputDirectoryFragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 76's script loading.",
+                "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 76's script loading.",
+                "order": 3.8
+              }
             }
           }
         }
+      },
+      {
+        "title": "Skyrim",
+        "properties": {
+          "papyrus.skyrim.skyrim": {
+            "type": "object",
+            "default": {},
+            "title": "Skyrim",
+            "properties": {
+              "papyrus.Skyrim.skyrim.autoDetect": {
+                "type": "boolean",
+                "default": true,
+                "description": "Automatically detect Skyrim installation and script paths.",
+                "markdownDescription": "Automatically detect **Skyrim** installation and script paths.",
+                "order": 1
+              },
+              "papyrus.Skyrim.skyrim.CompilerDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to PapyrusCompiler.exe for Skyrim.",
+                "markdownDescription": "Path to **PapyrusCompiler.exe** for Skyrim.",
+                "order": 2
+              },
+              "papyrus.Skyrim.skyrim.compiler.includeFlags": {
+                "type": "array",
+                "default": [],
+                "description": "Additional flags to pass to the Skyrim Papyrus compiler.",
+                "markdownDescription": "Additional flags to pass to the **Skyrim Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.5
+              },
+              "papyrus.Skyrim.skyrim.compiler.args": {
+                "type": "array",
+                "default": [],
+                "description": "Additional arguments to pass to the Skyrim Papyrus compiler.",
+                "markdownDescription": "Additional arguments to pass to the **Skyrim Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.6
+              },
+              "papyrus.Skyrim.skyrim.ScriptSourceDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to Papyrus scripts for Skyrim.",
+                "markdownDescription": "Path to **Papyrus scripts** for Skyrim.",
+                "order": 3
+              },
+              "papyrus.Skyrim.skyrim.compiler.namespaceworkingdirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Skyrim Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Skyrim Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.5
+              },
+              "papyrus.Skyrim.skyrim.compiler.namespaceworkingdirectoryfragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Skyrim Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Skyrim Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.6
+              },
+              "papyrus.Skyrim.skyrim.compiler.outputDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.7
+              },
+              "papyrus.Skyrim.skyrim.compiler.outputDirectoryFragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.8
+              }
+            }
+          },
+          "papyrus.skyrim.skyrimse": {
+            "type": "object",
+            "default": {},
+            "title": "Skyrim Special Edition",
+            "properties": {
+              "papyrus.Skyrim.skyrimse.autoDetect": {
+                "type": "boolean",
+                "default": true,
+                "description": "Automatically detect Skyrim Special Edition installation and script paths.",
+                "markdownDescription": "Automatically detect **Skyrim Special Edition** installation and script paths.",
+                "order": 1  
+              },
+              "papyrus.Skyrim.skyrimse.CompilerDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to PapyrusCompiler.exe for Skyrim Special Edition.",
+                "markdownDescription": "Path to **PapyrusCompiler.exe** for Skyrim Special Edition.",
+                "order": 2
+              },
+              "papyrus.Skyrim.skyrimse.compiler.includeFlags": {
+                "type": "array",
+                "default": [],
+                "description": "Additional flags to pass to the Skyrim Special Edition Papyrus compiler.",
+                "markdownDescription": "Additional flags to pass to the **Skyrim Special Edition Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.5
+              },
+              "papyrus.Skyrim.skyrimse.compiler.args": {
+                "type": "array",
+                "default": [],
+                "description": "Additional arguments to pass to the Skyrim Special Edition Papyrus compiler.",
+                "markdownDescription": "Additional arguments to pass to the **Skyrim Special Edition Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.6
+              },
+              "papyrus.Skyrim.skyrimse.ScriptSourceDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to Papyrus scripts for Skyrim Special Edition.",
+                "markdownDescription": "Path to **Papyrus scripts** for Skyrim Special Edition.",
+                "order": 3
+              },
+              "papyrus.Skyrim.skyrimse.compiler.namespaceworkingdirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Skyrim Special Edition Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Skyrim Special Edition Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.5
+              },
+              "papyrus.Skyrim.skyrimse.compiler.namespaceworkingdirectoryfragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Skyrim Special Edition Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Skyrim Special Edition Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.6
+              },
+              "papyrus.Skyrim.skyrimse.compiler.outputDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.7
+              },
+              "papyrus.Skyrim.skyrimse.compiler.outputDirectoryFragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.8
+              }
+            }
+          },
+          "papyrus.skyrim.skyrimae": {
+            "type": "object",
+            "default": {},
+            "title": "Skyrim Anniversary Edition",
+            "properties": {
+              "papyrus.Skyrim.skyrimae.autoDetect": {
+                "type": "boolean",
+                "default": true,
+                "description": "Automatically detect Skyrim Anniversary Edition installation and script paths.",
+                "markdownDescription": "Automatically detect **Skyrim Anniversary Edition** installation and script paths.",
+                "order": 1
+              },
+              "papyrus.Skyrim.skyrimae.CompilerDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to PapyrusCompiler.exe for Skyrim Anniversary Edition.",
+                "markdownDescription": "Path to **PapyrusCompiler.exe** for Skyrim Anniversary Edition.",
+                "order": 2
+              },
+              "papyrus.Skyrim.skyrimae.compiler.includeFlags": {
+                "type": "array",
+                "default": [],
+                "description": "Additional flags to pass to the Skyrim Anniversary Edition Papyrus compiler.",
+                "markdownDescription": "Additional flags to pass to the **Skyrim Anniversary Edition Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.5
+              },
+              "papyrus.Skyrim.skyrimae.compiler.args": {
+                "type": "array",
+                "default": [],
+                "description": "Additional arguments to pass to the Skyrim Anniversary Edition Papyrus compiler.",
+                "markdownDescription": "Additional arguments to pass to the **Skyrim Anniversary Edition Papyrus compiler**.",
+                "items": {
+                  "type": "string"
+                },
+                "order": 2.6
+              },
+              "papyrus.Skyrim.skyrimae.ScriptSourceDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "Path to Papyrus scripts for Skyrim Anniversary Edition.",
+                "markdownDescription": "Path to **Papyrus scripts** for Skyrim Anniversary Edition.",
+                "order": 3
+              },
+              "papyrus.Skyrim.skyrimae.compiler.namespaceworkingdirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Skyrim Anniversary Edition Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Skyrim Anniversary Edition Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.5
+              },
+              "papyrus.Skyrim.skyrimae.compiler.namespaceworkingdirectoryfragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Skyrim Anniversary Edition Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+                "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Skyrim Anniversary Edition Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+                "order": 3.6
+              },
+              "papyrus.Skyrim.skyrimae.compiler.outputDirectory": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.7
+              },
+              "papyrus.Skyrim.skyrimae.compiler.outputDirectoryFragments": {
+                "type": "string",
+                "default": "",
+                "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
+                "order": 3.8
+              }
+
+            }
+          }
+        }
+      },
+      {
+        "title": "Starfield",
+        "properties": {
+          "papyrus.starfield.autoDetect": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically detect Starfield installation and script paths.",
+            "markdownDescription": "Automatically detect **Starfield** installation and script paths.",
+            "order": 1
+          },
+          "papyrus.starfield.CompilerDirectory": {
+            "type": "string",
+            "default": "",
+            "description": "Path to PapyrusCompiler.exe for Starfield.",
+            "markdownDescription": "Path to **PapyrusCompiler.exe** for Starfield.",
+            "order": 2
+          },
+          "papyrus.starfield.compiler.includeFlags": {
+            "type": "array",
+            "default": [],
+            "description": "Additional flags to pass to the Starfield Papyrus compiler.",
+            "markdownDescription": "Additional flags to pass to the **Starfield Papyrus compiler**.",
+            "items": {
+              "type": "string"
+            },
+            "order": 2.5
+          },
+          "papyrus.starfield.compiler.args": {
+            "type": "array",
+            "default": [],
+            "description": "Additional arguments to pass to the Starfield Papyrus compiler.",
+            "markdownDescription": "Additional arguments to pass to the **Starfield Papyrus compiler**.",
+            "items": {
+              "type": "string"
+            },
+            "order": 2.6
+          },
+          "papyrus.starfield.ScriptSourceDirectory": {
+            "type": "string",
+            "default": "",
+            "description": "Path to Papyrus scripts for Starfield.",
+            "markdownDescription": "Path to **Papyrus scripts** for Starfield.",
+            "order": 3
+          },
+          "papyrus.starfield.compiler.namespaceworkingdirectory": {
+            "type": "string",
+            "default": "",
+            "description": "This is the Namespace or Working directory your scripts live and will be used when invoking the Starfield Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+            "markdownDescription": "This is the Namespace or Working directory your scripts live and will be used when invoking the **Starfield Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+            "order": 3.5
+          },
+          "papyrus.starfield.compiler.namespaceworkingdirectoryfragments": {
+            "type": "string",
+            "default": "",
+            "description": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Starfield Papyrus compiler. If not  set, the directory of the script being compiled will be used.",
+            "markdownDescription": "This is the Namespace or Working directory your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Starfield Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+            "order": 3.6
+          },
+          "papyrus.starfield.compiler.outputDirectory": {
+            "type": "string",
+            "default": "",
+            "description": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Starfield's script loading.",
+            "markdownDescription": "This is the output directory where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Starfield's script loading.",
+            "order": 3.7
+          },
+          "papyrus.starfield.compiler.outputDirectoryFragments": {
+            "type": "string",
+            "default": "",
+            "description": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Starfield's script loading.",
+            "markdownDescription": "This is the output directory where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Starfield's script loading.",
+            "order": 3.8
+          }
+        }
       }
-    }
+    ]
   },
+
   "scripts": {
     "vscode:prepublish": "npm run webpack-prod",
     "compile": "npm run webpack-dev",
