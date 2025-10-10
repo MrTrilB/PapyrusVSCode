@@ -4,11 +4,184 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+type ConfigSnapshot = {
+  key: string;
+  fullKey: string;
+  globalValue: any;
+  workspaceValue: any;
+};
+
+const cloneValue = <T>(value: T): T => {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  if (Array.isArray(value) || typeof value === 'object') {
+    return JSON.parse(JSON.stringify(value));
+  }
+  return value;
+};
+
+const toFullKey = (key: string): string => (key.startsWith('papyrus.') ? key : `papyrus.${key}`);
+
+type GameProfileKey = 'skyrim' | 'skyrimse' | 'skyrimae' | 'fallout4' | 'fallout76' | 'starfield';
+
+type GameSettingKeys = {
+  scriptDirectory?: string;
+  compilerDirectory?: string;
+  compilerArgs?: string;
+  compilerIncludeFlags?: string;
+  namespaceDirectory?: string;
+  namespaceFragmentsDirectory?: string;
+  outputDirectory?: string;
+  outputFragmentsDirectory?: string;
+  autoDetect?: string;
+};
+
+const EXTENSION_ROOT = path.resolve(__dirname, '../../..');
+
+const SUFFIX_MAPPINGS: { field: keyof GameSettingKeys; suffixes: string[] }[] = [
+  { field: 'scriptDirectory', suffixes: ['.scriptsourcedirectory', '.scriptdirectory'] },
+  { field: 'compilerDirectory', suffixes: ['.compilerdirectory'] },
+  { field: 'compilerArgs', suffixes: ['.compiler.args'] },
+  { field: 'compilerIncludeFlags', suffixes: ['.compiler.includeflags'] },
+  { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory'] },
+  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments'] },
+  { field: 'outputDirectory', suffixes: ['.compiler.outputdirectory'] },
+  { field: 'outputFragmentsDirectory', suffixes: ['.compiler.outputdirectoryfragments'] },
+  { field: 'autoDetect', suffixes: ['.autodetect'] }
+];
+
+const GAME_MARKERS: Record<GameProfileKey, string[]> = {
+  skyrim: ['.skyrim.', 'skyrim.'],
+  skyrimse: ['.skyrimse.', 'skyrimse.'],
+  skyrimae: ['.skyrimae.', 'skyrimae.'],
+  fallout4: ['.fallout4.', 'fallout4.'],
+  fallout76: ['.fallout76.', 'fallout76.'],
+  starfield: ['.starfield.', 'starfield.']
+};
+
+const stripPrefix = (key: string): string => (key.startsWith('papyrus.') ? key.slice('papyrus.'.length) : key);
+
+const collectConfigurationPropertyNames = (configurationContribution: any): string[] => {
+  const names = new Set<string>();
+  const visit = (node: any) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (typeof node !== 'object') return;
+    const properties = (node as any).properties;
+    if (properties && typeof properties === 'object') {
+      for (const [key, value] of Object.entries(properties)) {
+        if (typeof key === 'string' && key) {
+          names.add(key);
+        }
+        visit(value);
+      }
+    }
+  };
+  visit(configurationContribution);
+  return Array.from(names);
+};
+
+const resolveGameConfigurationKeys = (propertyNames: string[]): Record<GameProfileKey, GameSettingKeys> => {
+  const resolved: Record<GameProfileKey, GameSettingKeys> = {
+    skyrim: {},
+    skyrimse: {},
+    skyrimae: {},
+    fallout4: {},
+    fallout76: {},
+    starfield: {}
+  };
+
+  for (const rawName of propertyNames) {
+    if (typeof rawName !== 'string' || !rawName) continue;
+    const withoutPrefix = stripPrefix(rawName.trim());
+    if (!withoutPrefix) continue;
+    const lower = withoutPrefix.toLowerCase();
+
+    for (const gameKey of Object.keys(GAME_MARKERS) as GameProfileKey[]) {
+      const markers = GAME_MARKERS[gameKey];
+      if (!markers.some(marker => lower.includes(marker))) continue;
+      for (const mapping of SUFFIX_MAPPINGS) {
+        if (!mapping.suffixes.some(suffix => lower.endsWith(suffix))) continue;
+        if (!resolved[gameKey][mapping.field]) {
+          resolved[gameKey][mapping.field] = withoutPrefix;
+        }
+      }
+    }
+  }
+
+  return resolved;
+};
+
+const loadGameConfigurationKeys = (extensionPath: string): Record<GameProfileKey, GameSettingKeys> => {
+  const packageJsonPath = path.join(extensionPath, 'package.json');
+  const content = fs.readFileSync(packageJsonPath, 'utf8');
+  const packageJson = JSON.parse(content);
+  const propertyNames = collectConfigurationPropertyNames(packageJson?.contributes?.configuration);
+  return resolveGameConfigurationKeys(propertyNames);
+};
+
+const CONFIG_KEY_MAP = loadGameConfigurationKeys(EXTENSION_ROOT);
+
+const assertKey = (gameKey: GameProfileKey, value: string | undefined, label: string): string => {
+  assert.ok(value, `Missing configuration key for ${gameKey}.${label}`);
+  return value!;
+};
+
+const getKeys = (gameKey: GameProfileKey): GameSettingKeys => CONFIG_KEY_MAP[gameKey];
+
+const captureConfig = (key: string): ConfigSnapshot => {
+  const fullKey = toFullKey(key);
+  const inspected = vscode.workspace.getConfiguration().inspect<any>(fullKey);
+  return {
+    key,
+    fullKey,
+    globalValue: cloneValue(inspected?.globalValue),
+    workspaceValue: cloneValue(inspected?.workspaceValue)
+  };
+};
+
+const updatePapyrusSetting = async (key: string, value: any, target: vscode.ConfigurationTarget) => {
+  const fullKey = toFullKey(key);
+  await vscode.workspace.getConfiguration().update(fullKey, value, target);
+};
+
+const safeUpdate = async (key: string, value: any, target: vscode.ConfigurationTarget) => {
+  try {
+    await vscode.workspace.getConfiguration().update(key, value, target);
+  } catch (error: any) {
+    if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
+      // ignore missing contributions for schema-aligned snapshots
+      return;
+    }
+    throw error;
+  }
+};
+
+const restoreConfig = async (snapshot: ConfigSnapshot, hasWorkspace: boolean) => {
+  await safeUpdate(snapshot.fullKey, snapshot.globalValue, vscode.ConfigurationTarget.Global);
+  if (hasWorkspace) {
+    await safeUpdate(snapshot.fullKey, snapshot.workspaceValue, vscode.ConfigurationTarget.Workspace);
+  }
+};
+
+const STARFIELD_KEYS = getKeys('starfield');
+const FALLOUT4_KEYS = getKeys('fallout4');
+
+const STARFIELD_SCRIPT_DIRECTORY_KEY = assertKey('starfield', STARFIELD_KEYS.scriptDirectory, 'ScriptSourceDirectory');
+const STARFIELD_COMPILER_DIRECTORY_KEY = assertKey('starfield', STARFIELD_KEYS.compilerDirectory, 'CompilerDirectory');
+
+const FALLOUT4_SCRIPT_DIRECTORY_KEY = assertKey('fallout4', FALLOUT4_KEYS.scriptDirectory, 'ScriptSourceDirectory');
+const FALLOUT4_COMPILER_DIRECTORY_KEY = assertKey('fallout4', FALLOUT4_KEYS.compilerDirectory, 'CompilerDirectory');
+
 suite('Papyrus Tools basic features', () => {
   test('Activate extension on Papyrus file open', async () => {
     const doc = await vscode.workspace.openTextDocument({ language: 'papyrus', content: 'ScriptName Test extends Quest' });
     await vscode.window.showTextDocument(doc);
-    const ext = vscode.extensions.getExtension('your-name.papyrus-tools');
+  const ext = vscode.extensions.getExtension('MrTrilB.papyrus-tools');
     assert.ok(ext, 'Extension should be found');
     await ext!.activate();
     assert.ok(ext!.isActive, 'Extension should be active');
@@ -25,22 +198,15 @@ suite('Papyrus Tools basic features', () => {
   });
 
   test('Starfield utility functions appear after dot', async () => {
-    const ext = vscode.extensions.getExtension('your-name.papyrus-tools');
-    assert.ok(ext, 'Extension should be registered');
-    await ext!.activate();
+  const ext = vscode.extensions.getExtension('MrTrilB.papyrus-tools');
+  assert.ok(ext, 'Extension should be registered');
+  await ext!.activate();
 
-    const cfg = vscode.workspace.getConfiguration('papyrus');
     const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-    const gameInspect = cfg.inspect<string>('game');
-    const gamesInspect = cfg.inspect<any>('games');
-    const starfieldInspect = cfg.inspect<any>('starfield');
-
-    const originalGameGlobal = gameInspect?.globalValue;
-    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
-    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
-    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
-    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
-    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+    const snapshots = [
+      captureConfig('defaultGame'),
+  captureConfig(STARFIELD_SCRIPT_DIRECTORY_KEY)
+    ];
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let tempRoot: string;
@@ -52,36 +218,21 @@ suite('Papyrus Tools basic features', () => {
     }
     const scriptRoot = path.join(tempRoot, 'scripts');
     fs.mkdirSync(scriptRoot, { recursive: true });
-  const scriptName = 'SfTestUtility';
-  const utilityPath = path.join(scriptRoot, `${scriptName}.psc`);
-  fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
-
-    const mergePaths = (existing: any, targetPath: string) => {
-      const next = { ...(existing || {}) };
-      const paths: string[] = Array.isArray(next.scriptPaths) ? [...next.scriptPaths] : [];
-      if (!paths.some(p => p.toLowerCase() === targetPath.toLowerCase())) paths.unshift(targetPath);
-      next.scriptPaths = paths;
-      return next;
-    };
+    const scriptName = 'SfTestUtility';
+    const utilityPath = path.join(scriptRoot, `${scriptName}.psc`);
+    fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
 
     try {
       if (hasWorkspace) {
-        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
-        const workspaceGames = originalGamesWorkspace ? JSON.parse(JSON.stringify(originalGamesWorkspace)) : {};
-        workspaceGames['starfield'] = mergePaths(workspaceGames['starfield'], scriptRoot);
-        await cfg.update('games', workspaceGames, vscode.ConfigurationTarget.Workspace);
-        const workspaceStarfield = mergePaths(originalStarfieldWorkspace, scriptRoot);
-        await cfg.update('starfield', workspaceStarfield, vscode.ConfigurationTarget.Workspace);
+        await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Workspace);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, scriptRoot, vscode.ConfigurationTarget.Workspace);
       }
 
-    await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
-      const globalGames = originalGamesGlobal ? JSON.parse(JSON.stringify(originalGamesGlobal)) : {};
-      globalGames['starfield'] = mergePaths(globalGames['starfield'], scriptRoot);
-      await cfg.update('games', globalGames, vscode.ConfigurationTarget.Global);
-      const globalStarfield = mergePaths(originalStarfieldGlobal, scriptRoot);
-      await cfg.update('starfield', globalStarfield, vscode.ConfigurationTarget.Global);
-    const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
-    assert.ok(matches.length >= 1, 'Sanity check: SfTestUtility.psc should be discoverable');
+      await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Global);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, scriptRoot, vscode.ConfigurationTarget.Global);
+
+      const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
+      assert.ok(matches.length >= 1, 'Sanity check: SfTestUtility.psc should be discoverable');
 
       await vscode.commands.executeCommand('papyrus.rebuildIndex');
       await new Promise(res => setTimeout(res, 200));
@@ -101,35 +252,23 @@ suite('Papyrus Tools basic features', () => {
       }
       assert.ok(completionFound, 'Starfield helper function should be suggested');
     } finally {
-      if (hasWorkspace) {
-        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      for (const snapshot of snapshots) {
+        await restoreConfig(snapshot, hasWorkspace);
       }
-      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
   });
 
   test('Hover shows Starfield script and function details', async () => {
-    const ext = vscode.extensions.getExtension('your-name.papyrus-tools');
-    assert.ok(ext, 'Extension should be registered');
-    await ext!.activate();
+  const ext = vscode.extensions.getExtension('MrTrilB.papyrus-tools');
+  assert.ok(ext, 'Extension should be registered');
+  await ext!.activate();
 
-    const cfg = vscode.workspace.getConfiguration('papyrus');
     const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-    const gameInspect = cfg.inspect<string>('game');
-    const gamesInspect = cfg.inspect<any>('games');
-    const starfieldInspect = cfg.inspect<any>('starfield');
-
-    const originalGameGlobal = gameInspect?.globalValue;
-    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
-    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
-    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
-    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
-    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+    const snapshots = [
+      captureConfig('defaultGame'),
+  captureConfig(STARFIELD_SCRIPT_DIRECTORY_KEY)
+    ];
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let tempRoot: string;
@@ -141,38 +280,23 @@ suite('Papyrus Tools basic features', () => {
     }
     const scriptRoot = path.join(tempRoot, 'scripts');
     fs.mkdirSync(scriptRoot, { recursive: true });
-  const baseScriptName = 'SfTestUtility';
-  const utilityPath = path.join(scriptRoot, `${baseScriptName}.psc`);
-  fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
-  const consumerPath = path.join(scriptRoot, 'Consumer.psc');
-  fs.writeFileSync(consumerPath, ['ScriptName Consumer extends SfTestUtility', 'Function DoSomething()', '  SfTestUtility.MyStarfieldHelper()', 'EndFunction'].join('\n'));
-
-    const mergePaths = (existing: any, targetPath: string) => {
-      const next = { ...(existing || {}) };
-      const paths: string[] = Array.isArray(next.scriptPaths) ? [...next.scriptPaths] : [];
-      if (!paths.some(p => p.toLowerCase() === targetPath.toLowerCase())) paths.unshift(targetPath);
-      next.scriptPaths = paths;
-      return next;
-    };
+    const baseScriptName = 'SfTestUtility';
+    const utilityPath = path.join(scriptRoot, `${baseScriptName}.psc`);
+    fs.writeFileSync(utilityPath, ['ScriptName SfTestUtility', 'Function MyStarfieldHelper()', 'EndFunction'].join('\n'));
+    const consumerPath = path.join(scriptRoot, 'Consumer.psc');
+    fs.writeFileSync(consumerPath, ['ScriptName Consumer extends SfTestUtility', 'Function DoSomething()', '  SfTestUtility.MyStarfieldHelper()', 'EndFunction'].join('\n'));
 
     try {
       if (hasWorkspace) {
-        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
-        const workspaceGames = originalGamesWorkspace ? JSON.parse(JSON.stringify(originalGamesWorkspace)) : {};
-        workspaceGames['starfield'] = mergePaths(workspaceGames['starfield'], scriptRoot);
-        await cfg.update('games', workspaceGames, vscode.ConfigurationTarget.Workspace);
-        const workspaceStarfield = mergePaths(originalStarfieldWorkspace, scriptRoot);
-        await cfg.update('starfield', workspaceStarfield, vscode.ConfigurationTarget.Workspace);
+        await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Workspace);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, scriptRoot, vscode.ConfigurationTarget.Workspace);
       }
 
-    await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
-      const globalGames = originalGamesGlobal ? JSON.parse(JSON.stringify(originalGamesGlobal)) : {};
-      globalGames['starfield'] = mergePaths(globalGames['starfield'], scriptRoot);
-      await cfg.update('games', globalGames, vscode.ConfigurationTarget.Global);
-      const globalStarfield = mergePaths(originalStarfieldGlobal, scriptRoot);
-      await cfg.update('starfield', globalStarfield, vscode.ConfigurationTarget.Global);
-    const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
-    assert.ok(matches.length >= 2, 'Sanity check: Starfield temp scripts should be discoverable');
+      await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Global);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, scriptRoot, vscode.ConfigurationTarget.Global);
+
+      const matches = await vscode.workspace.findFiles(new vscode.RelativePattern(scriptRoot, '**/*.psc'));
+      assert.ok(matches.length >= 2, 'Sanity check: Starfield temp scripts should be discoverable');
 
       await vscode.commands.executeCommand('papyrus.rebuildIndex');
       await new Promise(res => setTimeout(res, 200));
@@ -206,14 +330,9 @@ suite('Papyrus Tools basic features', () => {
       }
       assert.ok(functionHoverFound, 'Hover should include function details for MyStarfieldHelper');
     } finally {
-      if (hasWorkspace) {
-        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      for (const snapshot of snapshots) {
+        await restoreConfig(snapshot, hasWorkspace);
       }
-      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
   });
@@ -253,59 +372,40 @@ suite('Papyrus Tools basic features', () => {
 
   test('Selecting game applies default profile settings', async () => {
     const cfg = vscode.workspace.getConfiguration('papyrus');
-
     const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-
-    const gameInspect = cfg.inspect<string>('game');
-    const gamesInspect = cfg.inspect<any>('games');
-    const starfieldInspect = cfg.inspect<any>('starfield');
-
-    const originalGameGlobal = gameInspect?.globalValue;
-    const originalGameWorkspace = hasWorkspace ? gameInspect?.workspaceValue : undefined;
-    const originalGamesGlobal = gamesInspect?.globalValue ? JSON.parse(JSON.stringify(gamesInspect.globalValue)) : undefined;
-    const originalGamesWorkspace = hasWorkspace && gamesInspect?.workspaceValue ? JSON.parse(JSON.stringify(gamesInspect.workspaceValue)) : undefined;
-    const originalStarfieldGlobal = starfieldInspect?.globalValue ? JSON.parse(JSON.stringify(starfieldInspect.globalValue)) : undefined;
-    const originalStarfieldWorkspace = hasWorkspace && starfieldInspect?.workspaceValue ? JSON.parse(JSON.stringify(starfieldInspect.workspaceValue)) : undefined;
+    const snapshots = [
+      captureConfig('defaultGame'),
+  captureConfig(STARFIELD_SCRIPT_DIRECTORY_KEY),
+  captureConfig(STARFIELD_COMPILER_DIRECTORY_KEY)
+    ];
 
     try {
       if (hasWorkspace) {
-        await cfg.update('games', {}, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('starfield', {}, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('game', 'Skyrim', vscode.ConfigurationTarget.Workspace);
-        await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Workspace);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, undefined, vscode.ConfigurationTarget.Workspace);
+  await updatePapyrusSetting(STARFIELD_COMPILER_DIRECTORY_KEY, undefined, vscode.ConfigurationTarget.Workspace);
+        await updatePapyrusSetting('defaultGame', 'Skyrim', vscode.ConfigurationTarget.Workspace);
+        await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Workspace);
       }
-      await cfg.update('games', {}, vscode.ConfigurationTarget.Global);
-      await cfg.update('starfield', {}, vscode.ConfigurationTarget.Global);
-      await cfg.update('game', 'Skyrim', vscode.ConfigurationTarget.Global);
-      await cfg.update('game', 'Starfield', vscode.ConfigurationTarget.Global);
+  await updatePapyrusSetting(STARFIELD_SCRIPT_DIRECTORY_KEY, undefined, vscode.ConfigurationTarget.Global);
+  await updatePapyrusSetting(STARFIELD_COMPILER_DIRECTORY_KEY, undefined, vscode.ConfigurationTarget.Global);
+      await updatePapyrusSetting('defaultGame', 'Skyrim', vscode.ConfigurationTarget.Global);
+      await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Global);
 
       let applied = false;
       for (let attempt = 0; attempt < 12 && !applied; attempt++) {
         await new Promise(res => setTimeout(res, 150));
-        const gamesState = cfg.inspect<any>('games');
-        const starfieldProfile = (gamesState?.workspaceValue?.starfield ?? gamesState?.globalValue?.starfield) || {};
-        const starfieldPaths: string[] = Array.isArray(starfieldProfile.scriptPaths) ? starfieldProfile.scriptPaths : [];
-        const starfieldCompiler = starfieldProfile.compiler?.path;
-
-        const starfieldConvenienceState = cfg.inspect<any>('starfield');
-        const starfieldConvenience = (starfieldConvenienceState?.workspaceValue ?? starfieldConvenienceState?.globalValue) || {};
-        const conveniencePaths: string[] = Array.isArray(starfieldConvenience.scriptPaths) ? starfieldConvenience.scriptPaths : [];
-
-        if (starfieldPaths.length > 0 && conveniencePaths.length > 0 && !!starfieldCompiler) {
+  const scriptDir = (cfg.get<string>(STARFIELD_SCRIPT_DIRECTORY_KEY) || '').trim();
+  const compilerPath = (cfg.get<string>(STARFIELD_COMPILER_DIRECTORY_KEY) || '').trim();
+        if (scriptDir && compilerPath) {
           applied = true;
         }
       }
 
-      assert.ok(applied, 'Default Starfield script paths and compiler should be applied after selecting the game');
+      assert.ok(applied, 'Default Starfield script path and compiler should be applied after selecting the game');
     } finally {
-      if (hasWorkspace) {
-        await cfg.update('game', originalGameWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('games', originalGamesWorkspace, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('starfield', originalStarfieldWorkspace, vscode.ConfigurationTarget.Workspace);
+      for (const snapshot of snapshots) {
+        await restoreConfig(snapshot, hasWorkspace);
       }
-      await cfg.update('game', originalGameGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('games', originalGamesGlobal, vscode.ConfigurationTarget.Global);
-      await cfg.update('starfield', originalStarfieldGlobal, vscode.ConfigurationTarget.Global);
     }
   });
 
@@ -358,9 +458,28 @@ suite('Papyrus Tools basic features', () => {
     fs.mkdirSync(sourceDir, { recursive: true });
     fs.writeFileSync(compilerPath, '');
 
-    // Configure auto-detect to only use our temp base, skip VDF
-    const cfg = vscode.workspace.getConfiguration('papyrus');
-    await cfg.update('autoDetect', { useLibraryFoldersVdf: false, additionalBasePaths: [tmp] }, vscode.ConfigurationTarget.Global);
+  // Configure auto-detect to only use our temp base, skip VDF
+  const cfg = vscode.workspace.getConfiguration('papyrus');
+    const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
+    const snapshots = [
+  captureConfig(FALLOUT4_SCRIPT_DIRECTORY_KEY),
+  captureConfig(FALLOUT4_COMPILER_DIRECTORY_KEY)
+    ];
+
+  const originalEnvBase = process.env.PAPYRUS_AUTODETECT_BASE_PATHS;
+  const originalEnvUseVdf = process.env.PAPYRUS_AUTODETECT_USE_VDF;
+  const originalEnvOnly = process.env.PAPYRUS_AUTODETECT_ONLY;
+    process.env.PAPYRUS_AUTODETECT_BASE_PATHS = tmp;
+    process.env.PAPYRUS_AUTODETECT_USE_VDF = '0';
+  process.env.PAPYRUS_AUTODETECT_ONLY = 'fallout4';
+  const scriptKey = toFullKey(FALLOUT4_SCRIPT_DIRECTORY_KEY);
+  const compilerKey = toFullKey(FALLOUT4_COMPILER_DIRECTORY_KEY);
+    if (hasWorkspace) {
+      await safeUpdate(scriptKey, '', vscode.ConfigurationTarget.Workspace);
+      await safeUpdate(compilerKey, '', vscode.ConfigurationTarget.Workspace);
+    }
+    await safeUpdate(scriptKey, '', vscode.ConfigurationTarget.Global);
+    await safeUpdate(compilerKey, '', vscode.ConfigurationTarget.Global);
 
     // Patch quick pick to auto-apply all
     const origQP = vscode.window.showQuickPick;
@@ -368,32 +487,47 @@ suite('Papyrus Tools basic features', () => {
     let result: any;
     try {
       result = await vscode.commands.executeCommand('papyrus.autoDetectGamePaths');
-    } finally {
-      (vscode.window as any).showQuickPick = origQP;
-    }
 
-    // Poll for settings update to persist
-    let ok = false;
-    for (let i = 0; i < 12 && !ok; i++) {
-      await new Promise(res => setTimeout(res, 150));
-      const gamesCfg = vscode.workspace.getConfiguration('papyrus');
-      const games = gamesCfg.get<any>('games') || {};
-      const fo4 = games['fallout4'] || {};
-      if (fo4.compiler?.path && fo4.compiler.path.toLowerCase() === compilerPath.toLowerCase()) {
-        const paths: string[] = fo4.scriptPaths || [];
-        if (paths.some(p => p.toLowerCase() === sourceDir.toLowerCase())) {
+      // Poll for settings update to persist
+      let ok = false;
+      for (let i = 0; i < 12 && !ok; i++) {
+        await new Promise(res => setTimeout(res, 150));
+  const configuredCompiler = (cfg.get<string>(FALLOUT4_COMPILER_DIRECTORY_KEY) || '').toLowerCase();
+  const configuredScripts = (cfg.get<string>(FALLOUT4_SCRIPT_DIRECTORY_KEY) || '').toLowerCase();
+        if (configuredCompiler === compilerPath.toLowerCase() && configuredScripts === sourceDir.toLowerCase()) {
           ok = true;
           break;
         }
       }
-    }
-    if (!ok && result) {
-      // Fallback: ensure our simulated detection at least found the right script path
-      const det = (result['fallout4'] || {}) as any;
-      if (Array.isArray(det.scriptPaths) && det.scriptPaths.some((p: string) => p.toLowerCase() === sourceDir.toLowerCase())) {
-        ok = true;
+      if (!ok && result) {
+        // Fallback: ensure our simulated detection at least found the right script path
+        const det = (result['fallout4'] || {}) as any;
+        if (Array.isArray(det.scriptPaths) && det.scriptPaths.some((p: string) => p.toLowerCase() === sourceDir.toLowerCase())) {
+          ok = true;
+        }
       }
+      assert.ok(ok, 'Auto-detect should apply (or detect) compiler and script paths for Fallout 4');
+    } finally {
+      (vscode.window as any).showQuickPick = origQP;
+      if (originalEnvBase === undefined) {
+        delete process.env.PAPYRUS_AUTODETECT_BASE_PATHS;
+      } else {
+        process.env.PAPYRUS_AUTODETECT_BASE_PATHS = originalEnvBase;
+      }
+      if (originalEnvUseVdf === undefined) {
+        delete process.env.PAPYRUS_AUTODETECT_USE_VDF;
+      } else {
+        process.env.PAPYRUS_AUTODETECT_USE_VDF = originalEnvUseVdf;
+      }
+      if (originalEnvOnly === undefined) {
+        delete process.env.PAPYRUS_AUTODETECT_ONLY;
+      } else {
+        process.env.PAPYRUS_AUTODETECT_ONLY = originalEnvOnly;
+      }
+      for (const snapshot of snapshots) {
+        await restoreConfig(snapshot, hasWorkspace);
+      }
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
-    assert.ok(ok, 'Auto-detect should apply (or detect) compiler and script paths for Fallout 4');
   });
 });
