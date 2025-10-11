@@ -2,6 +2,16 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [0.1.23] - 2025-10-10
+
+- Trimmed the extension to the Skyrim, Fallout, and Starfield profiles and removed legacy Skyrim SE/AE and Fallout 76 settings.
+- Updated configuration helpers, auto-detect prompts, and docs to align with the new three-profile schema.
+- Refreshed tests and default settings snapshots to cover the streamlined profile list.
+- Added a dedicated Papyrus Tools activity bar view so the command palette is always one click away.
+- Commands now mirror defaults and auto-detected paths into `papyrus.games.*`, keeping the new per-game profile structure in sync with convenience settings.
+- Default profiles now populate user-scope settings and migrate away any lingering workspace overrides so per-project overrides can be added afterwards.
+- Corrected the Fallout compiler namespace mapping to use `compiler.Namespace`, matching the latest configuration schema.
+
 ## [0.1.22] - 2025-10-10
 
 - Aligned runtime configuration mapping with the `package.json` schema so the extension only reads/writes settings that are actually contributed.

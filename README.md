@@ -17,6 +17,7 @@ Features:
  - Status bar profile selector and command "Papyrus: Switch Game Profile"
  - Per-game script folders and automatic include args for compiler
  - Script indexer powering Workspace Symbols and cross-script Go to Definition (best-effort)
+- Papyrus Tools activity bar view providing quick access to core commands
 
 ## Getting started
 
@@ -37,8 +38,8 @@ Set the compiler path and args in settings:
 
 Per-game overrides (recommended):
 
-- `papyrus.game`: Active game profile (Skyrim, SkyrimSE, SkyrimAE, Fallout4, Fallout76, Starfield)
-- `papyrus.games.<profile>.compiler.path|args|cwd`: Per-game compiler config where `<profile>` is one of `skyrim|skyrimse|skyrimae|fallout4|fallout76|starfield`.
+- `papyrus.game`: Active game profile (Skyrim, Fallout, Starfield)
+- `papyrus.games.<profile>.compiler.path|args|cwd`: Per-game compiler config where `<profile>` is one of `skyrim|fallout|starfield`.
 
 Switch profiles via the status bar or command "Papyrus: Switch Game Profile".
 
@@ -69,17 +70,16 @@ Papyrus Tools loads these snapshots into the index on activation. Any script pat
 
 Commands:
 
-- Papyrus: Configure Script Folders – prompts for Starfield/FO4 script directories
+- Papyrus: Configure Script Folders – prompts for Starfield/Fallout script directories
 - Papyrus: Add Script Folder – pick any folder to add to the active game profile
-- Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
- - Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim/SE/AE/FO4/FO76/Starfield and offers to apply detected compiler/script paths
+ Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
+ - Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim, Fallout, and Starfield and offers to apply detected compiler/script paths
 	 - Settings:
 		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
 		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
 		 - `papyrus.autoDetect.includeBothScriptPaths` (default false): when enabled, include both `Data\Scripts\Source` and `Data\Scripts` if both exist
 	 - Per-game checkboxes (default true):
-		 - `papyrus.autoDetect.enableSkyrim`, `papyrus.autoDetect.enableSkyrimSE`, `papyrus.autoDetect.enableSkyrimAE`
-		 - `papyrus.autoDetect.enableFallout4`, `papyrus.autoDetect.enableFallout76`, `papyrus.autoDetect.enableStarfield`
+		 - `papyrus.autoDetect.enableSkyrim`, `papyrus.autoDetect.enableFallout`, `papyrus.autoDetect.enableStarfield`
 	 - Also probes typical GOG/Epic paths (games under these roots):
 		 - GOG: `C:\Program Files (x86)\GOG Galaxy\Games`, `C:\GOG Games`, `D:\GOG Games`, `E:\GOG Games`, `F:\GOG Games`
 		 - Epic: `C:\Program Files\Epic Games` (plus D/E/F variants)
@@ -135,11 +135,11 @@ Example: Starfield
 }
 ```
 
-Example: Fallout 4
+Example: Fallout
 
 ```
 {
-	"papyrus.fallout4": {
+	"papyrus.Fallout": {
 		"scriptPaths": [
 			"C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts\\Source"
 		],

@@ -31,7 +31,7 @@
   ```
 
 ## Configuring Game Profiles
-The extension supports Skyrim, SkyrimSE, SkyrimAE, Fallout4, Fallout76, and Starfield.
+The extension supports Skyrim, Fallout, and Starfield.
 
 1. Select the active profile via the status-bar picker or the command palette (`Papyrus: Switch Game Profile`).
    - Switching the game now auto-populates default compiler locations and include folders for that title; confirm they match your install.

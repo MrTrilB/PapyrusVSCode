@@ -23,7 +23,7 @@ const cloneValue = <T>(value: T): T => {
 
 const toFullKey = (key: string): string => (key.startsWith('papyrus.') ? key : `papyrus.${key}`);
 
-type GameProfileKey = 'skyrim' | 'skyrimse' | 'skyrimae' | 'fallout4' | 'fallout76' | 'starfield';
+type GameProfileKey = 'skyrim' | 'fallout' | 'starfield';
 
 type GameSettingKeys = {
   scriptDirectory?: string;
@@ -44,8 +44,8 @@ const SUFFIX_MAPPINGS: { field: keyof GameSettingKeys; suffixes: string[] }[] = 
   { field: 'compilerDirectory', suffixes: ['.compilerdirectory'] },
   { field: 'compilerArgs', suffixes: ['.compiler.args'] },
   { field: 'compilerIncludeFlags', suffixes: ['.compiler.includeflags'] },
-  { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory'] },
-  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments'] },
+  { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory', '.compiler.namespace'] },
+  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments', '.compiler.namespacefragments'] },
   { field: 'outputDirectory', suffixes: ['.compiler.outputdirectory'] },
   { field: 'outputFragmentsDirectory', suffixes: ['.compiler.outputdirectoryfragments'] },
   { field: 'autoDetect', suffixes: ['.autodetect'] }
@@ -53,10 +53,7 @@ const SUFFIX_MAPPINGS: { field: keyof GameSettingKeys; suffixes: string[] }[] = 
 
 const GAME_MARKERS: Record<GameProfileKey, string[]> = {
   skyrim: ['.skyrim.', 'skyrim.'],
-  skyrimse: ['.skyrimse.', 'skyrimse.'],
-  skyrimae: ['.skyrimae.', 'skyrimae.'],
-  fallout4: ['.fallout4.', 'fallout4.'],
-  fallout76: ['.fallout76.', 'fallout76.'],
+  fallout: ['.fallout.', 'fallout.'],
   starfield: ['.starfield.', 'starfield.']
 };
 
@@ -88,10 +85,7 @@ const collectConfigurationPropertyNames = (configurationContribution: any): stri
 const resolveGameConfigurationKeys = (propertyNames: string[]): Record<GameProfileKey, GameSettingKeys> => {
   const resolved: Record<GameProfileKey, GameSettingKeys> = {
     skyrim: {},
-    skyrimse: {},
-    skyrimae: {},
-    fallout4: {},
-    fallout76: {},
+    fallout: {},
     starfield: {}
   };
 
@@ -169,13 +163,13 @@ const restoreConfig = async (snapshot: ConfigSnapshot, hasWorkspace: boolean) =>
 };
 
 const STARFIELD_KEYS = getKeys('starfield');
-const FALLOUT4_KEYS = getKeys('fallout4');
+const FALLOUT_KEYS = getKeys('fallout');
 
 const STARFIELD_SCRIPT_DIRECTORY_KEY = assertKey('starfield', STARFIELD_KEYS.scriptDirectory, 'ScriptSourceDirectory');
 const STARFIELD_COMPILER_DIRECTORY_KEY = assertKey('starfield', STARFIELD_KEYS.compilerDirectory, 'CompilerDirectory');
 
-const FALLOUT4_SCRIPT_DIRECTORY_KEY = assertKey('fallout4', FALLOUT4_KEYS.scriptDirectory, 'ScriptSourceDirectory');
-const FALLOUT4_COMPILER_DIRECTORY_KEY = assertKey('fallout4', FALLOUT4_KEYS.compilerDirectory, 'CompilerDirectory');
+const FALLOUT_SCRIPT_DIRECTORY_KEY = assertKey('fallout', FALLOUT_KEYS.scriptDirectory, 'ScriptSourceDirectory');
+const FALLOUT_COMPILER_DIRECTORY_KEY = assertKey('fallout', FALLOUT_KEYS.compilerDirectory, 'CompilerDirectory');
 
 suite('Papyrus Tools basic features', () => {
   test('Activate extension on Papyrus file open', async () => {
@@ -392,16 +386,48 @@ suite('Papyrus Tools basic features', () => {
       await updatePapyrusSetting('defaultGame', 'Starfield', vscode.ConfigurationTarget.Global);
 
       let applied = false;
+      let lastScriptDir = '';
+      let lastCompilerPath = '';
       for (let attempt = 0; attempt < 12 && !applied; attempt++) {
         await new Promise(res => setTimeout(res, 150));
-  const scriptDir = (cfg.get<string>(STARFIELD_SCRIPT_DIRECTORY_KEY) || '').trim();
-  const compilerPath = (cfg.get<string>(STARFIELD_COMPILER_DIRECTORY_KEY) || '').trim();
+        const scriptDir = (cfg.get<string>(STARFIELD_SCRIPT_DIRECTORY_KEY) || '').trim();
+        const compilerPath = (cfg.get<string>(STARFIELD_COMPILER_DIRECTORY_KEY) || '').trim();
+        lastScriptDir = scriptDir;
+        lastCompilerPath = compilerPath;
         if (scriptDir && compilerPath) {
           applied = true;
         }
       }
 
       assert.ok(applied, 'Default Starfield script path and compiler should be applied after selecting the game');
+
+      let gamesSynced = false;
+      for (let attempt = 0; attempt < 12 && !gamesSynced; attempt++) {
+        await new Promise(res => setTimeout(res, 150));
+        const gamesConfig = cfg.get<any>('games') as any;
+        const starfieldEntry = gamesConfig?.starfield;
+        if (!starfieldEntry) {
+          continue;
+        }
+        const starfieldScriptPaths = Array.isArray(starfieldEntry.scriptPaths) ? starfieldEntry.scriptPaths : [];
+        const pathMatch = starfieldScriptPaths.some((p: unknown) => typeof p === 'string' && p.trim().toLowerCase() === lastScriptDir.toLowerCase());
+        const compilerMatch = typeof starfieldEntry?.compiler?.path === 'string' && starfieldEntry.compiler.path.trim().toLowerCase() === lastCompilerPath.toLowerCase();
+        if (pathMatch && compilerMatch) {
+          gamesSynced = true;
+          break;
+        }
+      }
+      if (!gamesSynced) {
+        const gamesInspect = vscode.workspace.getConfiguration('papyrus').inspect<any>('games');
+        console.warn('papyrus.games starfield sync check', JSON.stringify({
+          global: gamesInspect?.globalValue,
+          workspace: gamesInspect?.workspaceValue,
+          effective: cfg.get<any>('games'),
+          scriptDir: lastScriptDir,
+          compilerPath: lastCompilerPath
+        }));
+      }
+      assert.ok(gamesSynced, 'papyrus.games.starfield should mirror the applied default script path and compiler');
     } finally {
       for (const snapshot of snapshots) {
         await restoreConfig(snapshot, hasWorkspace);
@@ -462,8 +488,8 @@ suite('Papyrus Tools basic features', () => {
   const cfg = vscode.workspace.getConfiguration('papyrus');
     const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
     const snapshots = [
-  captureConfig(FALLOUT4_SCRIPT_DIRECTORY_KEY),
-  captureConfig(FALLOUT4_COMPILER_DIRECTORY_KEY)
+  captureConfig(FALLOUT_SCRIPT_DIRECTORY_KEY),
+  captureConfig(FALLOUT_COMPILER_DIRECTORY_KEY)
     ];
 
   const originalEnvBase = process.env.PAPYRUS_AUTODETECT_BASE_PATHS;
@@ -472,8 +498,8 @@ suite('Papyrus Tools basic features', () => {
     process.env.PAPYRUS_AUTODETECT_BASE_PATHS = tmp;
     process.env.PAPYRUS_AUTODETECT_USE_VDF = '0';
   process.env.PAPYRUS_AUTODETECT_ONLY = 'fallout4';
-  const scriptKey = toFullKey(FALLOUT4_SCRIPT_DIRECTORY_KEY);
-  const compilerKey = toFullKey(FALLOUT4_COMPILER_DIRECTORY_KEY);
+  const scriptKey = toFullKey(FALLOUT_SCRIPT_DIRECTORY_KEY);
+  const compilerKey = toFullKey(FALLOUT_COMPILER_DIRECTORY_KEY);
     if (hasWorkspace) {
       await safeUpdate(scriptKey, '', vscode.ConfigurationTarget.Workspace);
       await safeUpdate(compilerKey, '', vscode.ConfigurationTarget.Workspace);
@@ -488,12 +514,16 @@ suite('Papyrus Tools basic features', () => {
     try {
       result = await vscode.commands.executeCommand('papyrus.autoDetectGamePaths');
 
+      const detection = (result?.['fallout'] || {}) as { compilerPath?: string; scriptPaths?: string[] };
+      const detectionScripts = Array.isArray(detection.scriptPaths) ? detection.scriptPaths.map(p => (typeof p === 'string' ? p.trim().toLowerCase() : '')).filter(Boolean) : [];
+      const detectionCompiler = typeof detection.compilerPath === 'string' ? detection.compilerPath.trim().toLowerCase() : '';
+
       // Poll for settings update to persist
       let ok = false;
       for (let i = 0; i < 12 && !ok; i++) {
         await new Promise(res => setTimeout(res, 150));
-  const configuredCompiler = (cfg.get<string>(FALLOUT4_COMPILER_DIRECTORY_KEY) || '').toLowerCase();
-  const configuredScripts = (cfg.get<string>(FALLOUT4_SCRIPT_DIRECTORY_KEY) || '').toLowerCase();
+  const configuredCompiler = (cfg.get<string>(FALLOUT_COMPILER_DIRECTORY_KEY) || '').toLowerCase();
+  const configuredScripts = (cfg.get<string>(FALLOUT_SCRIPT_DIRECTORY_KEY) || '').toLowerCase();
         if (configuredCompiler === compilerPath.toLowerCase() && configuredScripts === sourceDir.toLowerCase()) {
           ok = true;
           break;
@@ -501,12 +531,38 @@ suite('Papyrus Tools basic features', () => {
       }
       if (!ok && result) {
         // Fallback: ensure our simulated detection at least found the right script path
-        const det = (result['fallout4'] || {}) as any;
+  const det = (result['fallout'] || {}) as any;
         if (Array.isArray(det.scriptPaths) && det.scriptPaths.some((p: string) => p.toLowerCase() === sourceDir.toLowerCase())) {
           ok = true;
         }
       }
       assert.ok(ok, 'Auto-detect should apply (or detect) compiler and script paths for Fallout 4');
+
+      let gamesApplied = false;
+      const sourceLower = sourceDir.toLowerCase();
+      const compilerLower = compilerPath.toLowerCase();
+      for (let attempt = 0; attempt < 12 && !gamesApplied; attempt++) {
+        await new Promise(res => setTimeout(res, 150));
+        const gamesConfig = cfg.get<any>('games') as any;
+        const falloutEntry = gamesConfig?.fallout;
+        if (!falloutEntry) {
+          continue;
+        }
+        const falloutScriptPaths = Array.isArray(falloutEntry.scriptPaths) ? falloutEntry.scriptPaths : [];
+        const normalizedPaths = falloutScriptPaths.map((p: unknown) => (typeof p === 'string' ? p.trim().toLowerCase() : '')).filter(Boolean);
+        const normalizedCompiler = typeof falloutEntry?.compiler?.path === 'string' ? falloutEntry.compiler.path.trim().toLowerCase() : '';
+        const pathMatch = normalizedPaths.includes(sourceLower) || (detectionScripts.length > 0 && detectionScripts.some(expected => normalizedPaths.includes(expected)));
+        const compilerMatch = normalizedCompiler === compilerLower || (detectionCompiler ? normalizedCompiler === detectionCompiler : false);
+        if (pathMatch && (compilerMatch || !normalizedCompiler)) {
+          gamesApplied = true;
+          break;
+        }
+      }
+      if (!gamesApplied) {
+        const snapshot = cfg.get<any>('games');
+        console.warn('papyrus.games snapshot after auto-detect', JSON.stringify(snapshot));
+      }
+      assert.ok(gamesApplied, 'papyrus.games.fallout should include the detected compiler and script path');
     } finally {
       (vscode.window as any).showQuickPick = origQP;
       if (originalEnvBase === undefined) {

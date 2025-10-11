@@ -14,28 +14,40 @@ export type GameSettingKeys = {
   autoDetect?: string;
 };
 
-const makeLegacyGameKeys = (scriptRoot: string, compilerRoot?: string): GameSettingKeys => {
-  const compRoot = compilerRoot ?? scriptRoot;
-  return {
-    scriptDirectory: `${scriptRoot}.ScriptSourceDirectory`,
-    compilerDirectory: `${scriptRoot}.CompilerDirectory`,
-    compilerArgs: `${compRoot}.compiler.args`,
-    compilerIncludeFlags: `${compRoot}.compiler.includeFlags`,
-    namespaceDirectory: `${compRoot}.compiler.namespaceworkingdirectory`,
-    namespaceFragmentsDirectory: `${compRoot}.compiler.namespaceworkingdirectoryfragments`,
-    outputDirectory: `${compRoot}.compiler.outputDirectory`,
-    outputFragmentsDirectory: `${compRoot}.compiler.outputDirectoryFragments`,
-    autoDetect: `${scriptRoot}.autoDetect`
-  };
-};
-
 export const LEGACY_GAME_SETTING_KEYS: Record<GameProfileKey, GameSettingKeys> = {
-  skyrim: makeLegacyGameKeys('Skyrim.skyrim'),
-  skyrimse: makeLegacyGameKeys('Skyrim.skyrimse'),
-  skyrimae: makeLegacyGameKeys('Skyrim.skyrimae'),
-  fallout4: makeLegacyGameKeys('Fallout.fallout4', 'fallout.fallout4'),
-  fallout76: makeLegacyGameKeys('Fallout.fallout76', 'fallout.fallout76'),
-  starfield: makeLegacyGameKeys('starfield')
+  skyrim: {
+    scriptDirectory: 'Skyrim.ScriptSourceDirectory',
+    compilerDirectory: 'Skyrim.CompilerDirectory',
+    compilerArgs: 'Skyrim.compiler.args',
+    compilerIncludeFlags: 'Skyrim.compiler.includeFlags',
+    namespaceDirectory: 'Skyrim.compiler.Namespace',
+    namespaceFragmentsDirectory: 'Skyrim.compiler.NamespaceFragments',
+    outputDirectory: 'Skyrim.compiler.outputDirectory',
+    outputFragmentsDirectory: 'Skyrim.compiler.outputDirectoryFragments',
+    autoDetect: 'Skyrim.autoDetect'
+  },
+  fallout: {
+    scriptDirectory: 'Fallout.ScriptSourceDirectory',
+    compilerDirectory: 'Fallout.CompilerDirectory',
+    compilerArgs: 'Fallout.compiler.args',
+    compilerIncludeFlags: 'Fallout.compiler.includeFlags',
+    namespaceDirectory: 'Fallout.compiler.Namespace',
+    namespaceFragmentsDirectory: 'Fallout.compiler.NamespaceFragments',
+    outputDirectory: 'Fallout.compiler.outputDirectory',
+    outputFragmentsDirectory: 'Fallout.compiler.outputDirectoryFragments',
+    autoDetect: 'Fallout.autoDetect'
+  },
+  starfield: {
+    scriptDirectory: 'starfield.ScriptSourceDirectory',
+    compilerDirectory: 'starfield.CompilerDirectory',
+    compilerArgs: 'starfield.compiler.args',
+    compilerIncludeFlags: 'starfield.compiler.includeFlags',
+    namespaceDirectory: 'starfield.compiler.Namespace',
+    namespaceFragmentsDirectory: 'starfield.compiler.NamespaceFragments',
+    outputDirectory: 'starfield.compiler.outputDirectory',
+    outputFragmentsDirectory: 'starfield.compiler.outputDirectoryFragments',
+    autoDetect: 'starfield.autoDetect'
+  }
 };
 
 type SuffixMapping = {
@@ -48,8 +60,8 @@ const SUFFIX_MAPPINGS: SuffixMapping[] = [
   { field: 'compilerDirectory', suffixes: ['.compilerdirectory'] },
   { field: 'compilerArgs', suffixes: ['.compiler.args'] },
   { field: 'compilerIncludeFlags', suffixes: ['.compiler.includeflags'] },
-  { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory'] },
-  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments'] },
+  { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory', '.compiler.namespace'] },
+  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments', '.compiler.namespacefragments'] },
   { field: 'outputDirectory', suffixes: ['.compiler.outputdirectory'] },
   { field: 'outputFragmentsDirectory', suffixes: ['.compiler.outputdirectoryfragments'] },
   { field: 'autoDetect', suffixes: ['.autodetect'] }
@@ -57,10 +69,7 @@ const SUFFIX_MAPPINGS: SuffixMapping[] = [
 
 const GAME_MARKERS: Record<GameProfileKey, string[]> = {
   skyrim: ['.skyrim.', 'skyrim.'],
-  skyrimse: ['.skyrimse.', 'skyrimse.'],
-  skyrimae: ['.skyrimae.', 'skyrimae.'],
-  fallout4: ['.fallout4.', 'fallout4.'],
-  fallout76: ['.fallout76.', 'fallout76.'],
+  fallout: ['.fallout.', 'fallout.'],
   starfield: ['.starfield.', 'starfield.']
 };
 
@@ -92,10 +101,7 @@ const collectConfigurationPropertyNames = (configurationContribution: any): stri
 export const resolveGameConfigurationKeys = (propertyNames: string[]): Record<GameProfileKey, GameSettingKeys> => {
   const resolved: Record<GameProfileKey, GameSettingKeys> = {
     skyrim: {},
-    skyrimse: {},
-    skyrimae: {},
-    fallout4: {},
-    fallout76: {},
+    fallout: {},
     starfield: {}
   };
 
@@ -119,10 +125,7 @@ export const resolveGameConfigurationKeys = (propertyNames: string[]): Record<Ga
 
   const final: Record<GameProfileKey, GameSettingKeys> = {
     skyrim: { ...LEGACY_GAME_SETTING_KEYS.skyrim, ...resolved.skyrim },
-    skyrimse: { ...LEGACY_GAME_SETTING_KEYS.skyrimse, ...resolved.skyrimse },
-    skyrimae: { ...LEGACY_GAME_SETTING_KEYS.skyrimae, ...resolved.skyrimae },
-    fallout4: { ...LEGACY_GAME_SETTING_KEYS.fallout4, ...resolved.fallout4 },
-    fallout76: { ...LEGACY_GAME_SETTING_KEYS.fallout76, ...resolved.fallout76 },
+    fallout: { ...LEGACY_GAME_SETTING_KEYS.fallout, ...resolved.fallout },
     starfield: { ...LEGACY_GAME_SETTING_KEYS.starfield, ...resolved.starfield }
   };
 
