@@ -1,8 +1,8 @@
 {
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
-  "description": "Papyrus scripting support: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.23",
+  "description": "Papyrus scripting support for Bethesda games: syntax highlighting, snippets, completions, and hovers.",
+  "version": "0.1.24",
   "publisher": "MrTrilB",
   "license": "MIT",
   "homepage": "https://trilb.dev/",
@@ -14,7 +14,8 @@
         "url": "https://github.com/MrTrilB/PapyrusVSCode/issues"
     },
   "engines": {
-    "vscode": "^1.91.0"
+    "vscode": "^1.91.0",
+    "vscode-insiders": "^1.91.0"
   },
   "categories": [
     "Programming Languages",
@@ -30,13 +31,15 @@
     "onCommand:papyrus.configureScriptFolders",
     "onCommand:papyrus.rebuildIndex",
     "onCommand:papyrus.addScriptFolder",
+    "onCommand:papyrus.setupWorkspaceProfile",
     "onCommand:papyrus.autoDetectGamePaths",
     "onCommand:papyrus.scanScriptsForDiagnostics",
     "onCommand:papyrus.openCurrentGameSettings",
     "onCommand:papyrus.exportCurrentProfile",
     "onCommand:papyrus.importProfile",
     "onCommand:papyrus.createDefaultProfiles",
-    "onCommand:papyrus.openWorkspaceSettingsJson"
+    "onCommand:papyrus.openWorkspaceSettingsJson",
+    "onCommand:papyrus.openControlCenter"
   ],
   "contributes": {
     "languages": [
@@ -92,6 +95,10 @@
         "title": "Papyrus: Add Script Folder"
       },
       {
+        "command": "papyrus.setupWorkspaceProfile",
+        "title": "Papyrus: Setup Workspace Profile"
+      },
+      {
         "command": "papyrus.autoDetectGamePaths",
         "title": "Papyrus: Auto-Detect Game Paths"
       },
@@ -118,6 +125,10 @@
       {
         "command": "papyrus.createDefaultProfiles",
         "title": "Papyrus: Create Default Game Profiles"
+      },
+      {
+        "command": "papyrus.openControlCenter",
+        "title": "Papyrus: Open Control Center"
       }
     ],
     "menus": {
@@ -154,6 +165,10 @@
           "when": "true"
         },
         {
+          "command": "papyrus.setupWorkspaceProfile",
+          "when": "true"
+        },
+        {
           "command": "papyrus.exportCurrentProfile",
           "when": "true"
         },
@@ -163,6 +178,10 @@
         },
         {
           "command": "papyrus.createDefaultProfiles",
+          "when": "true"
+        },
+        {
+          "command": "papyrus.openControlCenter",
           "when": "true"
         }
       ]
@@ -225,26 +244,6 @@
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Fallout 4.",
             "order": 2
           },
-          "papyrus.Fallout.compiler.includeFlags": {
-            "type": "array",
-            "default": [],
-            "description": "Additional flags to pass to the Fallout 4 Papyrus compiler.",
-            "markdownDescription": "Additional flags to pass to the **Fallout 4 Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.5
-          },
-          "papyrus.Fallout.compiler.Args": {
-            "type": "array",
-            "default": [],
-            "description": "Additional arguments to pass to the Fallout 4 Papyrus compiler.",
-            "markdownDescription": "Additional arguments to pass to the **Fallout 4 Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.6
-          },
           "papyrus.Fallout.ScriptSourceDirectory": {
               "type": "string",
               "default": "",
@@ -298,26 +297,6 @@
             "description": "Path to PapyrusCompiler.exe for Skyrim.",
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Skyrim.",
             "order": 2
-          },
-          "papyrus.Skyrim.compiler.includeFlags": {
-            "type": "array",
-            "default": [],
-            "description": "Additional flags to pass to the Skyrim Papyrus compiler.",
-            "markdownDescription": "Additional flags to pass to the **Skyrim Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.5
-          },
-          "papyrus.Skyrim.compiler.Args": {
-            "type": "array",
-            "default": [],
-            "description": "Additional arguments to pass to the Skyrim Papyrus compiler.",
-            "markdownDescription": "Additional arguments to pass to the **Skyrim Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.6
           },
           "papyrus.Skyrim.ScriptSourceDirectory": {
             "type": "string",
@@ -373,26 +352,6 @@
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Starfield.",
             "order": 2
           },
-          "papyrus.starfield.compiler.includeFlags": {
-            "type": "array",
-            "default": [],
-            "description": "Additional flags to pass to the Starfield Papyrus compiler.",
-            "markdownDescription": "Additional flags to pass to the **Starfield Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.5
-          },
-          "papyrus.starfield.compiler.Args": {
-            "type": "array",
-            "default": [],
-            "description": "Additional arguments to pass to the Starfield Papyrus compiler.",
-            "markdownDescription": "Additional arguments to pass to the **Starfield Papyrus compiler**.",
-            "items": {
-              "type": "string"
-            },
-            "order": 2.6
-          },
           "papyrus.starfield.ScriptSourceDirectory": {
             "type": "string",
             "default": "",
@@ -444,9 +403,16 @@
     "test-compile": "tsc -p ./tsconfig.test.json",
     "test": "npm run webpack-dev && npm run test-compile && node ./out/test/runTest.js"
   },
+  "dependencies": {
+    "@fluentui/react-components": "^9.57.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.6",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
     "@types/vscode": "^1.91.0",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.0.0",

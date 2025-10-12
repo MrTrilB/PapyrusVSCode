@@ -2,6 +2,16 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [0.1.24] - 2025-10-11
+
+- Added an interactive compile workflow that guides you through choosing the game profile, script folders, working directory, and compiler arguments before running PapyrusCompiler.
+- Existing compiler arguments stored in settings can now be reviewed, kept, or discarded inside the new wizard.
+- Flag presets include descriptions, incompatibility checks, and custom input prompts to help curate the final command line.
+- Refreshed command palette and compile wizard prompts with codicon icons so the UX feels more lively.
+- Introduced "Papyrus: Setup Workspace Profile" to walk mod authors through creating a per-mod `.vscode/settings.json` with Starfield compiler, namespace, and output folders.
+- Added "Papyrus: Open Control Center", a Fluent UI powered webview with sidebar navigation for workspace, compiler, and diagnostics forms.
+- Extended the webpack pipeline to bundle the React/Fluent UI control center so assets load in the VS Code webview securely.
+
 ## [0.1.23] - 2025-10-10
 
 - Trimmed the extension to the Skyrim, Fallout, and Starfield profiles and removed legacy Skyrim SE/AE and Fallout 76 settings.

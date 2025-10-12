@@ -4,6 +4,7 @@ type PapyrusCommandDefinition = {
   id: string;
   title: string;
   description?: string;
+  iconId?: string;
 };
 
 type PapyrusCommandCategory = {
@@ -20,17 +21,62 @@ const COMMAND_CATEGORIES: PapyrusCommandCategory[] = [
       {
         id: 'papyrus.compileFile',
         title: 'Compile Current File',
-        description: 'Compile the active Papyrus script with the configured compiler.'
+        description: 'Compile the active Papyrus script with the configured compiler.',
+        iconId: 'rocket'
       },
       {
         id: 'papyrus.rebuildIndex',
         title: 'Rebuild Script Index',
-        description: 'Regenerate the Papyrus script symbol index from configured folders.'
+        description: 'Regenerate the Papyrus script symbol index from configured folders.',
+        iconId: 'sync'
       },
       {
         id: 'papyrus.scanScriptsForDiagnostics',
         title: 'Scan Scripts for Diagnostics',
-        description: 'Validate all configured script folders for basic Papyrus diagnostics.'
+        description: 'Validate all configured script folders for basic Papyrus diagnostics.',
+        iconId: 'beaker'
+      }
+    ]
+  },
+  {
+    label: 'Profiles & Automation',
+    iconId: 'library',
+    commands: [
+      {
+        id: 'papyrus.openControlCenter',
+        title: 'Open Control Center',
+        description: 'Launch the Fluent UI control center for Papyrus tools.',
+        iconId: 'layout'
+      },
+      {
+        id: 'papyrus.switchGame',
+        title: 'Switch Game Profile',
+        description: 'Change the active Papyrus game profile for language features and settings.',
+        iconId: 'globe'
+      },
+      {
+        id: 'papyrus.autoDetectGamePaths',
+        title: 'Auto-Detect Game Paths',
+        description: 'Locate installed games and apply detected compiler/script paths.',
+        iconId: 'wand'
+      },
+      {
+        id: 'papyrus.exportCurrentProfile',
+        title: 'Export Current Game Profile',
+        description: 'Export the merged settings for the active game to a JSON profile.',
+        iconId: 'arrow-up'
+      },
+      {
+        id: 'papyrus.importProfile',
+        title: 'Import Game Profile',
+        description: 'Import Papyrus profile settings from a JSON file and optionally activate it.',
+        iconId: 'arrow-down'
+      },
+      {
+        id: 'papyrus.createDefaultProfiles',
+        title: 'Create Default Game Profiles',
+        description: 'Seed compiler and script paths with typical defaults for each supported game.',
+        iconId: 'star-full'
       }
     ]
   },
@@ -41,58 +87,38 @@ const COMMAND_CATEGORIES: PapyrusCommandCategory[] = [
       {
         id: 'papyrus.openCurrentGameSettings',
         title: 'Open Current Game Settings',
-        description: 'Open the settings view filtered to the active Papyrus game profile.'
+        description: 'Open the settings view filtered to the active Papyrus game profile.',
+        iconId: 'gear'
       },
       {
         id: 'papyrus.openWorkspaceSettingsJson',
         title: 'Open Workspace Settings (JSON)',
-        description: 'Open settings.json for direct editing of Papyrus configuration.'
+        description: 'Open settings.json for direct editing of Papyrus configuration.',
+        iconId: 'file-code'
       },
       {
         id: 'papyrus.configureScriptFolders',
         title: 'Configure Script Folders',
-        description: 'Prompt for Papyrus script source folders per supported game.'
+        description: 'Prompt for Papyrus script source folders per supported game.',
+        iconId: 'folder'
       },
       {
         id: 'papyrus.configureCompilers',
         title: 'Configure Compiler Paths',
-        description: 'Prompt for Papyrus compiler executable paths per supported game.'
+        description: 'Prompt for Papyrus compiler executable paths per supported game.',
+        iconId: 'tools'
       },
       {
         id: 'papyrus.addScriptFolder',
         title: 'Add Script Folder',
-        description: 'Select a script source directory and apply it to the active game profile.'
-      }
-    ]
-  },
-  {
-    label: 'Profiles & Automation',
-    iconId: 'library',
-    commands: [
-      {
-        id: 'papyrus.switchGame',
-        title: 'Switch Game Profile',
-        description: 'Change the active Papyrus game profile for language features and settings.'
+        description: 'Select a script source directory and apply it to the active game profile.',
+        iconId: 'diff-added'
       },
       {
-        id: 'papyrus.autoDetectGamePaths',
-        title: 'Auto-Detect Game Paths',
-        description: 'Locate installed games and apply detected compiler/script paths.'
-      },
-      {
-        id: 'papyrus.exportCurrentProfile',
-        title: 'Export Current Game Profile',
-        description: 'Export the merged settings for the active game to a JSON profile.'
-      },
-      {
-        id: 'papyrus.importProfile',
-        title: 'Import Game Profile',
-        description: 'Import Papyrus profile settings from a JSON file and optionally activate it.'
-      },
-      {
-        id: 'papyrus.createDefaultProfiles',
-        title: 'Create Default Game Profiles',
-        description: 'Seed compiler and script paths with typical defaults for each supported game.'
+        id: 'papyrus.setupWorkspaceProfile',
+        title: 'Setup Workspace Profile',
+        description: 'Create a .vscode/settings.json tailored for this mod workspace.',
+        iconId: 'briefcase'
       }
     ]
   }
@@ -119,7 +145,7 @@ class PapyrusCommandItem extends vscode.TreeItem {
       command: definition.id,
       title: definition.title
     };
-    this.iconPath = new vscode.ThemeIcon('terminal');
+    this.iconPath = new vscode.ThemeIcon(definition.iconId ?? 'terminal');
     this.contextValue = 'papyrusCommand';
   }
 }

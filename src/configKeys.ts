@@ -129,6 +129,15 @@ export const resolveGameConfigurationKeys = (propertyNames: string[]): Record<Ga
     starfield: { ...LEGACY_GAME_SETTING_KEYS.starfield, ...resolved.starfield }
   };
 
+  const pruneIfMissing: (keyof GameSettingKeys)[] = ['compilerArgs', 'compilerIncludeFlags'];
+  for (const profileKey of Object.keys(final) as GameProfileKey[]) {
+    for (const field of pruneIfMissing) {
+      if (!resolved[profileKey][field]) {
+        delete final[profileKey][field];
+      }
+    }
+  }
+
   return final;
 };
 

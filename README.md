@@ -12,12 +12,14 @@ Features:
 - Document symbols (Outline) for functions/events/properties
 - Go to Definition within a file for functions/events
 - Basic diagnostics for If/EndIf and While/EndWhile balance
-- Command: "Papyrus: Compile Current File" (configurable compiler path)
+- Command: "Papyrus: Compile Current File" with an interactive wizard for compiler path, include folders, working dir, and flags
  - Multi-game profiles (Skyrim/SE/AE, Fallout 4/76, Starfield)
  - Status bar profile selector and command "Papyrus: Switch Game Profile"
  - Per-game script folders and automatic include args for compiler
  - Script indexer powering Workspace Symbols and cross-script Go to Definition (best-effort)
 - Papyrus Tools activity bar view providing quick access to core commands
+- Fluent UI Control Center webview with sidebar navigation for workspace, compiler, and diagnostics forms
+- Workspace profile setup wizard to generate per-mod `.vscode/settings.json`
 
 ## Getting started
 
@@ -43,7 +45,15 @@ Per-game overrides (recommended):
 
 Switch profiles via the status bar or command "Papyrus: Switch Game Profile".
 
-Then run the command "Papyrus: Compile Current File" from the Command Palette or editor title.
+Then run the command "Papyrus: Compile Current File" from the Command Palette or editor title. The wizard will:
+
+- Confirm the game profile and compiler executable to use
+- Let you curate include folders, working directory, and any extra compiler switches (with presets for common flags)
+- Preview the final PapyrusCompiler command before launching it in a dedicated terminal
+
+### Workspace setup wizard
+
+Use "Papyrus: Setup Workspace Profile" on a mod workspace to scaffold `.vscode/settings.json` with Starfield compiler, namespace, and output folders. The walkthrough supports browsing for each directory, manual entry, or leaving optional values blank so every mod can keep its own isolated build configuration.
 
 ### Quick setup (Starfield / Fallout 4)
 
@@ -72,8 +82,9 @@ Commands:
 
 - Papyrus: Configure Script Folders – prompts for Starfield/Fallout script directories
 - Papyrus: Add Script Folder – pick any folder to add to the active game profile
- Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
- - Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim, Fallout, and Starfield and offers to apply detected compiler/script paths
+- Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
+- Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim, Fallout, and Starfield and offers to apply detected compiler/script paths
+- Papyrus: Open Control Center – launch the Fluent UI hub for workspace, compiler, and diagnostics helpers
 	 - Settings:
 		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
 		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
@@ -91,8 +102,10 @@ Commands:
 - Papyrus: Configure Compiler Paths
 - Papyrus: Configure Script Folders
 - Papyrus: Add Script Folder
+- Papyrus: Setup Workspace Profile
 - Papyrus: Rebuild Script Index
  - Papyrus: Auto-Detect Game Paths
+- Papyrus: Open Control Center
  - Papyrus: Open Current Game Settings
  - Papyrus: Export Current Game Profile
  - Papyrus: Import Game Profile

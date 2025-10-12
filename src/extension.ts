@@ -5,6 +5,10 @@ import * as path from 'path';
 import { GameProfile, GameProfileKey, SUPPORTED_GAMES, GAME_TO_PROFILE_KEY, PROFILE_KEY_TO_GAME } from './gameTypes';
 import { registerPapyrusCommandsView } from './papyrusCommandsView';
 import { GameSettingKeys, LEGACY_GAME_SETTING_KEYS, loadGameConfigurationKeys } from './configKeys';
+import { CompilerSettingsSnapshot } from './papyrusConfigTypes';
+import { runInteractiveCompile } from './interactiveCompileFlow';
+import { runWorkspaceSetupWizard } from './workspaceSetup';
+import { ControlCenterPanel } from './controlCenterPanel';
 
 interface DefaultProfileData {
   scriptPaths: string[];
@@ -513,15 +517,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   };
 
-  type NormalizedGameSettings = {
-    scriptPaths: string[];
-    compiler: {
-      path: string;
-      args: string[];
-      cwd: string;
-      includeFlags: string[];
-    };
-  };
+  type NormalizedGameSettings = CompilerSettingsSnapshot;
 
   const cloneNormalized = (settings: NormalizedGameSettings): NormalizedGameSettings => ({
     scriptPaths: [...settings.scriptPaths],
@@ -1152,7 +1148,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  // Compile command with interactive prompts
+  // Compile command using dedicated interactive flow
   const compileCmd = vscode.commands.registerCommand('papyrus.compileFile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -1164,78 +1160,22 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('Active file is not a Papyrus (.psc) document.');
       return;
     }
+
     await doc.save();
 
     const cfg = vscode.workspace.getConfiguration('papyrus');
-    const game = getGame();
-    const merged = getMergedGameConfig(cfg, game);
+    const currentGame = getGame();
+    const includeFlagSetting: string = cfg.get<string>('compiler.includeFlag') || '-i';
+    const pathSeparatorSetting: string = cfg.get<string>('compiler.pathSeparator') || ';';
 
-    // Prompt for compiler path
-    const compilerPathInput = await vscode.window.showInputBox({
-      prompt: 'Papyrus Compiler Path',
-      value: merged.compiler.path || '',
-      placeHolder: 'Enter the full path to PapyrusCompiler.exe'
+    await runInteractiveCompile({
+      document: doc,
+      defaultGame: currentGame,
+      supportedGames: SUPPORTED_GAMES,
+      getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
+      includeFlag: includeFlagSetting,
+      pathSeparator: pathSeparatorSetting
     });
-    if (!compilerPathInput) return; // User cancelled
-    const compilerPath = compilerPathInput.trim();
-    if (!compilerPath || !fs.existsSync(compilerPath)) {
-      vscode.window.showErrorMessage('Invalid compiler path. Please provide a valid path to PapyrusCompiler.exe.');
-      return;
-    }
-
-    // Prompt for args
-    const argsInput = await vscode.window.showInputBox({
-      prompt: 'Compiler Arguments',
-      value: merged.compiler.args.join(' ') || '',
-      placeHolder: 'Enter compiler arguments separated by spaces (e.g., -optimize -release)'
-    });
-    if (argsInput === undefined) return; // User cancelled
-    const args = argsInput.trim() ? argsInput.trim().split(/\s+/) : [];
-
-    // Prompt for include flags
-    const includeFlagsInput = await vscode.window.showInputBox({
-      prompt: 'Include Flags',
-      value: merged.compiler.includeFlags.join(' ') || '',
-      placeHolder: 'Enter include flags separated by spaces (leave empty if none)'
-    });
-    if (includeFlagsInput === undefined) return; // User cancelled
-    const includeFlags = includeFlagsInput.trim() ? includeFlagsInput.trim().split(/\s+/) : [];
-
-    // Prompt for script paths
-    const scriptPathsInput = await vscode.window.showInputBox({
-      prompt: 'Script Include Paths',
-      value: merged.scriptPaths.join(';') || '',
-      placeHolder: 'Enter script paths separated by semicolons (;)'
-    });
-    if (scriptPathsInput === undefined) return; // User cancelled
-    const scriptPaths = scriptPathsInput.trim() ? scriptPathsInput.trim().split(';').map(p => p.trim()).filter(Boolean) : [];
-
-    // Prompt for working directory
-    const cwdInput = await vscode.window.showInputBox({
-      prompt: 'Working Directory (optional)',
-      value: merged.compiler.cwd || '',
-      placeHolder: 'Enter the working directory for compilation (leave empty for default)'
-    });
-    if (cwdInput === undefined) return; // User cancelled
-    const cwd = cwdInput.trim() || undefined;
-
-    // Build include arg from script paths
-    const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
-    const sep: string = cfg.get<string>('compiler.pathSeparator') || ';';
-
-    const scriptPath = doc.uri.fsPath;
-    const cmd = `${compilerPath}`;
-    const finalArgs: string[] = [...args, ...includeFlags];
-    if (scriptPaths.length > 0) {
-      const joined = scriptPaths.join(sep);
-      const flag = includeFlag.includes('=') ? `${includeFlag}"${joined}"` : `${includeFlag}="${joined}"`;
-      finalArgs.push(flag);
-    }
-    finalArgs.push(scriptPath);
-
-    const term = vscode.window.createTerminal({ name: 'Papyrus Compile', cwd });
-    term.sendText([cmd, ...finalArgs.map(a => a.includes(' ') ? `"${a}"` : a)].join(' '));
-    term.show();
   });
 
   // Configure script folders command: sets per-game include paths
@@ -1322,6 +1262,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     vscode.window.showInformationMessage('Papyrus compiler paths updated (where provided).');
+  });
+
+  const setupWorkspaceProfileCmd = vscode.commands.registerCommand('papyrus.setupWorkspaceProfile', async () => {
+    await runWorkspaceSetupWizard();
+  });
+
+  const openControlCenterCmd = vscode.commands.registerCommand('papyrus.openControlCenter', () => {
+    ControlCenterPanel.createOrShow(context);
   });
 
   // Open Settings for current game
@@ -1822,6 +1770,8 @@ export function activate(context: vscode.ExtensionContext) {
   addScriptFolderCmd,
     configureScriptFoldersCmd,
     configureCompilersCmd,
+    setupWorkspaceProfileCmd,
+  openControlCenterCmd,
     scanScriptsCmd,
     autoDetectCmd,
     switchGameCmd,
