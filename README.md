@@ -110,6 +110,7 @@ Commands:
  - Papyrus: Export Current Game Profile
  - Papyrus: Import Game Profile
  - Papyrus: Create Default Game Profiles
+ - Papyrus: Clear Stored Settings
 
 Selecting a game from the dropdown or running "Papyrus: Switch Game Profile" applies the default compiler location and script include folders for that game, making first-time setup a single click.
 

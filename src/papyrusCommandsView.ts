@@ -119,6 +119,12 @@ const COMMAND_CATEGORIES: PapyrusCommandCategory[] = [
         title: 'Setup Workspace Profile',
         description: 'Create a .vscode/settings.json tailored for this mod workspace.',
         iconId: 'briefcase'
+      },
+      {
+        id: 'papyrus.clearStoredSettings',
+        title: 'Clear Stored Settings',
+        description: 'Remove Papyrus configuration from user and workspace scopes.',
+        iconId: 'trash'
       }
     ]
   }

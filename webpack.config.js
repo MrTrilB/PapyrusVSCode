@@ -75,10 +75,17 @@ const webviewConfig = {
           {
             loader: "ts-loader",
             options: {
-              transpileOnly: false
+              transpileOnly: false,
+              compilerOptions: {
+                module: "esnext"
+              }
             }
           }
         ]
+      },
+      {
+        test: /\.(png|jpe?g|gif|svg)$/i,
+        type: "asset/resource"
       },
       {
         test: /\.js$/,

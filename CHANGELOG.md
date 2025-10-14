@@ -2,6 +2,10 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [0.1.27] - 2025-10-12
+
+- Added command "Papyrus: Clear Stored Settings" to remove Papyrus configuration from workspace and/or user scopes for quick debugging resets.
+
 ## [0.1.24] - 2025-10-11
 
 - Added an interactive compile workflow that guides you through choosing the game profile, script folders, working directory, and compiler arguments before running PapyrusCompiler.

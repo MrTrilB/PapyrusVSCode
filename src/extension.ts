@@ -153,6 +153,43 @@ export function activate(context: vscode.ExtensionContext) {
     modifiers?: string[];
   };
 
+  const GENERAL_PAPYRUS_SETTINGS: string[] = [
+    'defaultGame',
+    'compiler.includeFlag',
+    'compiler.pathSeparator',
+    'autoDetect.additionalBasePaths',
+    'autoDetect.includeBothScriptPaths',
+    'autoDetect.useLibraryFoldersVdf'
+  ];
+
+  const clearPapyrusSettingsForTarget = async (target: vscode.ConfigurationTarget) => {
+    const cfg = vscode.workspace.getConfiguration('papyrus');
+    for (const key of GENERAL_PAPYRUS_SETTINGS) {
+      await cfg.update(key, undefined, target);
+    }
+    await cfg.update('games', undefined, target);
+
+    for (const profileKey of Object.keys(GAME_SETTING_KEYS) as GameProfileKey[]) {
+      const keys = GAME_SETTING_KEYS[profileKey];
+      await updatePapyrusConfig(keys.scriptDirectory, undefined, target);
+      await updatePapyrusConfig(keys.compilerDirectory, undefined, target);
+      await updatePapyrusConfig(keys.compilerArgs, undefined, target);
+      await updatePapyrusConfig(keys.compilerIncludeFlags, undefined, target);
+      await updatePapyrusConfig(keys.namespaceDirectory, undefined, target);
+      await updatePapyrusConfig(keys.namespaceFragmentsDirectory, undefined, target);
+      await updatePapyrusConfig(keys.outputDirectory, undefined, target);
+      await updatePapyrusConfig(keys.outputFragmentsDirectory, undefined, target);
+      await updatePapyrusConfig(keys.autoDetect, undefined, target);
+    }
+  };
+
+  const clearPapyrusSettings = async (targets: vscode.ConfigurationTarget[]) => {
+    for (const target of targets) {
+      await clearPapyrusSettingsForTarget(target);
+    }
+    await buildIndex();
+  };
+
   type ScriptIndexEntry = {
     scriptName: string;
     extends?: string;
@@ -766,6 +803,19 @@ export function activate(context: vscode.ExtensionContext) {
         next.scriptPaths = [defaults.scriptPaths[0]];
         changed = true;
       }
+      if (defaults.scriptPaths.length > 0) {
+        const primaryDefault = defaults.scriptPaths[0];
+        const normalizedDefault = primaryDefault.toLowerCase();
+        const scriptConfigLower = (scriptConfigValue || '').toLowerCase();
+        const shouldEnsureDefault = !scriptConfigLower || scriptConfigLower === normalizedDefault;
+        if (shouldEnsureDefault) {
+          const mergedScripts = mergeUniquePaths(next.scriptPaths, [primaryDefault]);
+          if (!arraysEqual(next.scriptPaths, mergedScripts)) {
+            next.scriptPaths = mergedScripts;
+            changed = true;
+          }
+        }
+      }
       const nextCompiler = (next.compiler.path || '').toLowerCase();
       const defaultCompiler = (defaults.compiler.path || '').toLowerCase();
       if (((forceCompilerPath || !compilerConfigValue) && defaultCompiler && nextCompiler !== defaultCompiler) || (!next.compiler.path && defaults.compiler.path)) {
@@ -1268,6 +1318,49 @@ export function activate(context: vscode.ExtensionContext) {
     await runWorkspaceSetupWizard();
   });
 
+  const clearStoredSettingsCmd = vscode.commands.registerCommand('papyrus.clearStoredSettings', async () => {
+    const workspaceAvailable = !!vscode.workspace.workspaceFolders?.length;
+    const scopeOptions: Array<{ label: string; detail: string; targets: vscode.ConfigurationTarget[] }> = [];
+
+    if (workspaceAvailable) {
+      scopeOptions.push({
+        label: 'Workspace Only',
+        detail: 'Remove Papyrus settings stored in the current workspace folder.',
+        targets: [vscode.ConfigurationTarget.Workspace]
+      });
+    }
+
+    scopeOptions.push({
+      label: 'User Settings Only',
+      detail: 'Remove Papyrus settings stored in your global/user profile.',
+      targets: [vscode.ConfigurationTarget.Global]
+    });
+
+    if (workspaceAvailable) {
+      scopeOptions.push({
+        label: 'Workspace + User Settings',
+        detail: 'Clear Papyrus settings from both workspace and user scopes.',
+        targets: [vscode.ConfigurationTarget.Workspace, vscode.ConfigurationTarget.Global]
+      });
+    }
+
+    const pick = await vscode.window.showQuickPick(scopeOptions, {
+      placeHolder: 'Select which Papyrus settings scope you want to clear.'
+    });
+
+    if (!pick) {
+      return;
+    }
+
+    try {
+      await clearPapyrusSettings(pick.targets);
+      vscode.window.showInformationMessage(`Papyrus: Cleared stored settings (${pick.label}).`);
+    } catch (error: any) {
+      const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
+      vscode.window.showErrorMessage(`Papyrus: Failed to clear settings – ${message}`);
+    }
+  });
+
   const openControlCenterCmd = vscode.commands.registerCommand('papyrus.openControlCenter', () => {
     ControlCenterPanel.createOrShow(context);
   });
@@ -1424,8 +1517,17 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  type AutoDetectOptions = {
+    applyAll?: boolean;
+    skipPrompts?: boolean;
+    silent?: boolean;
+  };
+
   // Auto-detect game installations (Steam) and configure compiler/script paths
-  const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async () => {
+  const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async (options?: AutoDetectOptions) => {
+    const applyAll = options?.applyAll === true;
+    const skipPrompts = options?.skipPrompts === true;
+    const silent = options?.silent === true;
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     const cfg = vscode.workspace.getConfiguration('papyrus');
     const autoCfg = (cfg.get<any>('autoDetect') || {});
@@ -1630,18 +1732,6 @@ export function activate(context: vscode.ExtensionContext) {
       if (info.scriptPaths.length) items.push(`scripts: ${info.scriptPaths.join('; ')}`);
       if (items.length) parts.push(`${display}: ${items.join(' | ')}`);
     }
-    if (!parts.length) {
-      vscode.window.showInformationMessage('No game installations detected in common Steam library locations.');
-      return detected;
-    }
-
-    const confirm = await vscode.window.showQuickPick([
-      { label: 'Apply all detected paths', description: parts.join('\n'), value: 'all' },
-      { label: 'Review per game (interactive)', value: 'interactive' },
-      { label: 'Cancel', value: 'cancel' }
-    ], { placeHolder: 'Apply detected Papyrus compiler and script paths?' });
-    if (!confirm || confirm.value === 'cancel') return;
-
     const applyProfile = async (profileKey: GameProfileKey) => {
       const d = detected[profileKey];
       if (!d.compilerPath && d.scriptPaths.length === 0) return;
@@ -1673,6 +1763,43 @@ export function activate(context: vscode.ExtensionContext) {
       }
     };
 
+    if (!parts.length) {
+      if (!silent) {
+        vscode.window.showInformationMessage('No game installations detected in common Steam library locations.');
+      }
+      return detected;
+    }
+
+    if (applyAll) {
+      for (const key of Object.keys(detected) as GameProfileKey[]) {
+        try {
+          await applyProfile(key);
+        } catch (error: any) {
+          if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
+            console.warn(`[Papyrus] Auto-detect skip for ${key}: ${error.message}`, error);
+          } else {
+            throw error;
+          }
+        }
+      }
+      await buildIndex();
+      if (!silent) {
+        vscode.window.showInformationMessage('Applied all detected Papyrus paths.');
+      }
+      return detected;
+    }
+
+    if (skipPrompts) {
+      return detected;
+    }
+
+    const confirm = await vscode.window.showQuickPick([
+      { label: 'Apply all detected paths', description: parts.join('\n'), value: 'all' },
+      { label: 'Review per game (interactive)', value: 'interactive' },
+      { label: 'Cancel', value: 'cancel' }
+    ], { placeHolder: 'Apply detected Papyrus compiler and script paths?' });
+    if (!confirm || confirm.value === 'cancel') return;
+
     if (confirm.value === 'all') {
       for (const key of Object.keys(detected) as GameProfileKey[]) {
         try {
@@ -1686,7 +1813,9 @@ export function activate(context: vscode.ExtensionContext) {
         }
       }
       await buildIndex();
-      vscode.window.showInformationMessage('Applied all detected Papyrus paths.');
+      if (!silent) {
+        vscode.window.showInformationMessage('Applied all detected Papyrus paths.');
+      }
       return detected;
     }
 
@@ -1712,7 +1841,9 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
       await buildIndex();
-      vscode.window.showInformationMessage('Auto-detection complete. Applied selected Papyrus paths.');
+      if (!silent) {
+        vscode.window.showInformationMessage('Auto-detection complete. Applied selected Papyrus paths.');
+      }
       return detected;
     } catch (error: any) {
       if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
@@ -1771,6 +1902,7 @@ export function activate(context: vscode.ExtensionContext) {
     configureScriptFoldersCmd,
     configureCompilersCmd,
     setupWorkspaceProfileCmd,
+  clearStoredSettingsCmd,
   openControlCenterCmd,
     scanScriptsCmd,
     autoDetectCmd,

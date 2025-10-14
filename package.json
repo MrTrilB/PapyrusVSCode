@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support for Bethesda games: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.24",
+  "version": "0.1.27",
   "publisher": "MrTrilB",
   "license": "MIT",
   "homepage": "https://trilb.dev/",
@@ -39,6 +39,7 @@
     "onCommand:papyrus.importProfile",
     "onCommand:papyrus.createDefaultProfiles",
     "onCommand:papyrus.openWorkspaceSettingsJson",
+    "onCommand:papyrus.clearStoredSettings",
     "onCommand:papyrus.openControlCenter"
   ],
   "contributes": {
@@ -125,6 +126,10 @@
       {
         "command": "papyrus.createDefaultProfiles",
         "title": "Papyrus: Create Default Game Profiles"
+      },
+      {
+        "command": "papyrus.clearStoredSettings",
+        "title": "Papyrus: Clear Stored Settings"
       },
       {
         "command": "papyrus.openControlCenter",
@@ -224,6 +229,22 @@
             "type": "object",
             "default": {},
             "markdownDescription": "Per-game Papyrus settings managed automatically by Papyrus Tools commands (keys: `starfield`, `fallout`, `skyrim`)."
+          },
+          "papyrus.SetupWizard": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "This tells Papyrus Tools if the Setup Wizard has been completed. If you want to run the Setup Wizard again, set this to false and reload VSCode.",
+            "description": "This tells Papyrus Tools if the Setup Wizard has been completed. If you want to run the Setup Wizard again, set this to false and reload VSCode.",
+            "order": 0.5  
+          },
+          "papyrus.Projects": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string, String"
+            },
+            "description": "Per-project Papyrus settings managed automatically by Papyrus Tools commands (keys are workspace folder paths).",
+            "markdownDescription": "Per-project Papyrus settings managed automatically by Papyrus Tools commands (keys are workspace folder paths)."
           }
         }
       },
@@ -258,26 +279,12 @@
               "markdownDescription": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
               "order": 3.5
           },
-          "papyrus.Fallout.compiler.NamespaceFragments": {
-              "type": "string",
-              "default": "",
-              "description": "This is the Namespace or Working directory, inside the Data folder, that your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Fallout 4 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
-              "markdownDescription": "This is the Namespace or Working directory, inside the Data folder, that your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
-              "order": 3.6
-          },
           "papyrus.Fallout.compiler.outputDirectory": {
               "type": "string",
               "default": "",
               "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
               "markdownDescription": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
               "order": 3.7
-          },
-          "papyrus.Fallout.compiler.outputDirectoryFragments": {
-              "type": "string",
-              "default": "",
-              "description": "This is the output directory, inside the Data folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
-              "markdownDescription": "This is the output directory, inside the Data folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
-              "order": 3.8
           }
         }
       },
@@ -312,26 +319,12 @@
             "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, that your scripts live and will be used when invoking the **Skyrim Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
             "order": 3.5
           },
-          "papyrus.Skyrim.compiler.NamespaceFragments": {
-            "type": "string",
-            "default": "",
-            "description": "This is the Namespace or Working directory, inside the Data folder, your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Skyrim Papyrus compiler. If not set, the directory of the script being compiled will be used.",
-            "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Skyrim Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
-           "order": 3.6
-          },
           "papyrus.Skyrim.compiler.outputDirectory": {
             "type": "string",
             "default": "",
             "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
             "markdownDescription": "This is the output directory, inside the **Data** folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
             "order": 3.7
-          },
-          "papyrus.Skyrim.compiler.outputDirectoryFragments": {
-            "type": "string",
-            "default": "",
-            "description": "This is the output directory, inside the Data folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
-            "markdownDescription": "This is the output directory, inside the **Data** folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
-            "order": 3.8
           }
         }
       },
@@ -366,26 +359,12 @@
             "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, that your scripts live and will be used when invoking the **Starfield Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
             "order": 3.5
           },
-          "papyrus.starfield.compiler.NamespaceFragments": {
-            "type": "string",
-            "default": "",
-            "description": "This is the Namespace or Working directory, inside the Data folder, that your Fragment scripts live. Normally this will be Namespace/Fragments and will be used when invoking the Starfield Papyrus compiler. If not set, the directory of the script being compiled will be used.",
-            "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, that your Fragment scripts live. Normally this will be **Namespace/Fragments** and will be used when invoking the **Starfield Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
-            "order": 3.6
-          },
           "papyrus.starfield.compiler.outputDirectory": {
             "type": "string",
             "default": "",
             "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Starfield's script loading.",
             "markdownDescription": "This is the output directory, inside the **Data** folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Starfield's script loading.",
             "order": 3.7
-          },
-          "papyrus.starfield.compiler.outputDirectoryFragments": {
-            "type": "string",
-            "default": "",
-            "description": "This is the output directory, inside the Data folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Starfield's script loading.",
-            "markdownDescription": "This is the output directory, inside the **Data** folder, where compiled Fragment scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Starfield's script loading.",
-            "order": 3.8
           }
         }
       }
