@@ -3,11 +3,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const STARFIELD_KEYS = {
-  compilerPath: 'papyrus.starfield.compiler.path',
-  namespaceDir: 'papyrus.starfield.compiler.Namespace',
-  namespaceFragmentsDir: 'papyrus.starfield.compiler.NamespaceFragments',
-  outputDir: 'papyrus.starfield.compiler.outputDirectory',
-  outputFragmentsDir: 'papyrus.starfield.compiler.outputDirectoryFragments'
+  compilerPath: 'papyrusTools.starfield.compiler.path',
+  namespaceDir: 'papyrusTools.starfield.compiler.Namespace',
+  outputDir: 'papyrusTools.starfield.compiler.outputDirectory'
 } as const;
 
 type PathAction = 'use' | 'browse' | 'manual' | 'clear';
@@ -216,9 +214,7 @@ export const runWorkspaceSetupWizard = async (): Promise<void> => {
   const scopedConfig = vscode.workspace.getConfiguration(undefined, workspaceFolder.uri);
   const currentCompiler = scopedConfig.get<string>(STARFIELD_KEYS.compilerPath) || '';
   const currentNamespace = scopedConfig.get<string>(STARFIELD_KEYS.namespaceDir) || '';
-  const currentNamespaceFragments = scopedConfig.get<string>(STARFIELD_KEYS.namespaceFragmentsDir) || '';
   const currentOutputDir = scopedConfig.get<string>(STARFIELD_KEYS.outputDir) || '';
-  const currentOutputFragmentsDir = scopedConfig.get<string>(STARFIELD_KEYS.outputFragmentsDir) || '';
 
   const compilerPath = await promptForCompilerPath(currentCompiler);
   if (compilerPath === undefined) {
@@ -230,33 +226,19 @@ export const runWorkspaceSetupWizard = async (): Promise<void> => {
     return;
   }
 
-  const namespaceFragmentsDir = await promptForDirectory('Papyrus Workspace Setup: Source fragments directory', currentNamespaceFragments, 'Select fragments directory');
-  if (namespaceFragmentsDir === undefined) {
-    return;
-  }
-
   const outputDir = await promptForDirectory('Papyrus Workspace Setup: Output directory', currentOutputDir, 'Select output directory');
   if (outputDir === undefined) {
     return;
   }
 
-  const outputFragmentsDir = await promptForDirectory('Papyrus Workspace Setup: Output fragments directory', currentOutputFragmentsDir, 'Select fragments output directory');
-  if (outputFragmentsDir === undefined) {
-    return;
-  }
-
   await scopedConfig.update(STARFIELD_KEYS.compilerPath, compilerPath, vscode.ConfigurationTarget.WorkspaceFolder);
   await scopedConfig.update(STARFIELD_KEYS.namespaceDir, namespaceDir, vscode.ConfigurationTarget.WorkspaceFolder);
-  await scopedConfig.update(STARFIELD_KEYS.namespaceFragmentsDir, namespaceFragmentsDir, vscode.ConfigurationTarget.WorkspaceFolder);
   await scopedConfig.update(STARFIELD_KEYS.outputDir, outputDir, vscode.ConfigurationTarget.WorkspaceFolder);
-  await scopedConfig.update(STARFIELD_KEYS.outputFragmentsDir, outputFragmentsDir, vscode.ConfigurationTarget.WorkspaceFolder);
 
   const summaryLines = [
     `Compiler: ${compilerPath}`,
     `Namespace: ${namespaceDir || '(blank)'}`,
-    `Namespace Fragments: ${namespaceFragmentsDir || '(blank)'}`,
-    `Output Directory: ${outputDir || '(blank)'}`,
-    `Output Fragments Directory: ${outputFragmentsDir || '(blank)'}`
+    `Output Directory: ${outputDir || '(blank)'}`
   ];
 
   vscode.window.showInformationMessage(

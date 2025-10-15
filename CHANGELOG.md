@@ -2,6 +2,12 @@
 
 All notable changes to the "papyrus-tools" extension will be documented in this file.
 
+## [Unreleased]
+
+- Added a Projects tab to the Control Center overview with filtering, path shortcuts, and load/edit/delete actions for saved workspace projects.
+- Enabled Control Center to apply workspace projects to Papyrus settings and keep manifests in sync when projects are edited or removed.
+- Clarified fragment path messaging in the workspace wizard so authors know fragments are configured per project.
+
 ## [0.1.27] - 2025-10-12
 
 - Added command "Papyrus: Clear Stored Settings" to remove Papyrus configuration from workspace and/or user scopes for quick debugging resets.

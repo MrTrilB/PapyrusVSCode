@@ -1,11 +1,16 @@
 import * as React from 'react';
 import {
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Button,
   Divider,
   Field,
   FluentProvider,
   Input,
-  Label,
   Checkbox,
   Link,
   MessageBar,
@@ -13,6 +18,12 @@ import {
   MessageBarTitle,
   Select,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   Tab,
   TabList,
   Text,
@@ -20,12 +31,12 @@ import {
   shorthands,
   tokens
 } from '@fluentui/react-components';
-import { CheckmarkCircle20Regular, Folder20Regular, Search24Regular, Warning20Regular } from '@fluentui/react-icons';
+import { Add20Regular, ArrowExport20Regular, ArrowImport20Regular, ArrowSync20Regular, CheckmarkCircle20Regular, Clock20Regular, Delete20Regular, Folder20Regular, Info20Regular, Link20Regular, Open16Regular, Search20Regular, Search24Regular, Settings20Regular, Target20Regular, Warning20Regular } from '@fluentui/react-icons';
 import type { CheckboxOnChangeData, SelectOnChangeData } from '@fluentui/react-components';
 import { getPapyrusTheme, PapyrusThemeMode } from './PapyrusFluentUITheme';
 import logoSvg from './images/Papyrus Tools - Logo Colour.svg';
 
-type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'compiler' | 'debugging';
+type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'compiler' | 'debugging' | 'projects';
 
 declare global {
   interface Window {
@@ -42,6 +53,9 @@ const useStyles = makeStyles({
   },
   sidebar: {
     width: '240px',
+    flex: '0 0 240px',
+    minWidth: '240px',
+    flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
     borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -78,6 +92,45 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalXL,
     display: 'grid',
     rowGap: tokens.spacingVerticalXL
+  },
+  overviewTabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    rowGap: tokens.spacingVerticalS,
+    columnGap: tokens.spacingHorizontalM
+  },
+  projectsToolbar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spacingHorizontalM,
+    rowGap: tokens.spacingVerticalS
+  },
+  projectsTableWrapper: {
+    overflowX: 'auto'
+  },
+  projectsTable: {
+    minWidth: '720px'
+  },
+  projectsActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: tokens.spacingHorizontalS,
+    rowGap: tokens.spacingVerticalXS
+  },
+  projectsFragmentGroup: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS
+  },
+  projectsFragmentItem: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXS
+  },
+  pathCell: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXS
   },
   sectionGridTight: {
     display: 'grid',
@@ -251,6 +304,18 @@ const useStyles = makeStyles({
   summaryMessage: {
     marginTop: tokens.spacingVerticalS
   },
+  projectsEmptyState: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+    border: `1px dashed ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.padding(tokens.spacingVerticalL, tokens.spacingHorizontalL)
+  },
+  dialogContentGrid: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalM
+  },
   summaryStatus: {
     display: 'flex',
     alignItems: 'center',
@@ -264,6 +329,24 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.padding(tokens.spacingVerticalXL, tokens.spacingHorizontalXL)
+  },
+  activeProjectLabel: {
+    color: tokens.colorNeutralForeground2
+  },
+  statusGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: tokens.spacingHorizontalL,
+    marginTop: tokens.spacingVerticalS
+  },
+  statusItem: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXS
+  },
+  statusLabel: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+    display: 'block'
   }
 });
 
@@ -272,16 +355,44 @@ type OverviewContentProps = {
   onNavigate: (section: SectionKey) => void;
 };
 
+type OverviewProject = {
+  name: string;
+  namespace: string;
+  namespaceFolder: string;
+  namespaceExists: boolean;
+  outputDir: string;
+  outputExists: boolean;
+  namespaceFragmentsDir: string;
+  namespaceFragmentsExists: boolean;
+  outputFragmentsDir: string;
+  outputFragmentsExists: boolean;
+  game?: GameKey;
+};
+
+type ActiveProjectSummary = {
+  name: string;
+  namespaceDir: string;
+  outputDir: string;
+  namespaceFragmentsDir: string;
+  outputFragmentsDir: string;
+  game?: GameKey;
+};
+
+type ProjectsOverviewProps = {
+  projects: OverviewProject[];
+  onNavigateWorkspace: () => void;
+  activeProject?: ActiveProjectSummary;
+};
+
 const OverviewContent: React.FC<OverviewContentProps> = ({ wizardCompleted, onNavigate }) => {
   const styles = useStyles();
 
-  return (
+  const summaryContent = (
     <div>
       <div>
-        <Text weight="semibold" size={500}>Welcome to Papyrus Control Center</Text>
+        <Text weight="semibold" size={500}>Welcome to Papyrus Control Centre</Text>
         <Text size={300}>
-          Use the navigation to configure your mod workspace, compiler preferences, and diagnostic tooling using Fluent UI
-          powered forms.
+          Use the navigation to configure your mod workspace, compiler preferences, and diagnostic tooling using our GUI.
         </Text>
       </div>
       <Divider className={styles.dividerSpacing} />
@@ -293,21 +404,418 @@ const OverviewContent: React.FC<OverviewContentProps> = ({ wizardCompleted, onNa
         <div className={styles.quickActionRow}>
           {wizardCompleted ? (
             <Button appearance="primary" onClick={() => onNavigate('workspace')}>
-              Workspace Wizard
+              Project Wizard
             </Button>
           ) : (
             <Button appearance="primary" onClick={() => onNavigate('setupWizard')}>
               Setup Wizard
             </Button>
           )}
-          <Button appearance="secondary" onClick={() => onNavigate('compiler')}>
-            Compiler Settings
-          </Button>
           <Button appearance="secondary" onClick={() => onNavigate('debugging')}>
             Diagnostics Report
           </Button>
         </div>
+        <Text size={200} className={styles.mutedText}>
+          
+        </Text>
       </div>
+    </div>
+  );
+
+  return (
+    <div className={styles.sectionGrid}>
+      {summaryContent}
+    </div>
+  );
+};
+
+const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ projects, onNavigateWorkspace, activeProject }) => {
+  const styles = useStyles();
+  const [selectedGameFilter, setSelectedGameFilter] = React.useState<'all' | GameKey>('all');
+  const [dialogState, setDialogState] = React.useState<{ mode: 'load' | 'edit' | 'delete' | null; project?: OverviewProject }>({ mode: null });
+  const [pending, setPending] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ intent: 'success' | 'error'; message: string } | null>(null);
+  const [editForm, setEditForm] = React.useState<{
+    name: string;
+    game: GameKey;
+    namespaceDir: string;
+    outputDir: string;
+    namespaceFragmentsDir: string;
+    outputFragmentsDir: string;
+  }>({
+    name: '',
+    game: 'starfield',
+    namespaceDir: '',
+    outputDir: '',
+    namespaceFragmentsDir: '',
+    outputFragmentsDir: ''
+  });
+
+  const sortedProjects = React.useMemo(() => {
+    const copy = [...projects];
+    copy.sort((a, b) => a.name.localeCompare(b.name));
+    return copy;
+  }, [projects]);
+
+  const filteredProjects = React.useMemo(() => {
+    if (selectedGameFilter === 'all') {
+      return sortedProjects;
+    }
+    return sortedProjects.filter(project => project.game === selectedGameFilter);
+  }, [selectedGameFilter, sortedProjects]);
+
+  const hasProjects = sortedProjects.length > 0;
+
+  const handleReveal = React.useCallback((pathValue: string) => {
+    if (!pathValue) {
+      return;
+    }
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.revealPath',
+      payload: { target: pathValue }
+    });
+  }, []);
+
+  const handleOpenDialog = (mode: 'load' | 'edit' | 'delete', project: OverviewProject) => {
+    setDialogState({ mode, project });
+    setPending(false);
+    if (mode === 'edit') {
+      setEditForm({
+        name: project.name,
+        game: project.game ?? 'starfield',
+        namespaceDir: project.namespace,
+        outputDir: project.outputDir,
+        namespaceFragmentsDir: project.namespaceFragmentsDir,
+        outputFragmentsDir: project.outputFragmentsDir
+      });
+    }
+  };
+
+  const resetDialog = () => {
+    setDialogState({ mode: null });
+    setPending(false);
+    setEditForm({
+      name: '',
+      game: 'starfield',
+      namespaceDir: '',
+      outputDir: '',
+      namespaceFragmentsDir: '',
+      outputFragmentsDir: ''
+    });
+  };
+
+  React.useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+    const timer = window.setTimeout(() => setFeedback(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  React.useEffect(() => {
+    const listener = (event: MessageEvent<any>) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+      if (data.type === 'papyrusTools.loadWorkspaceProjectResult') {
+        setPending(false);
+        if (data.status === 'success') {
+          setFeedback({ intent: 'success', message: `Loaded project${data.project?.name ? ` ${data.project.name}` : ''}.` });
+          resetDialog();
+        } else {
+          setFeedback({ intent: 'error', message: typeof data.message === 'string' ? data.message : 'Failed to load the project.' });
+        }
+      }
+      if (data.type === 'papyrusTools.updateWorkspaceProjectResult') {
+        setPending(false);
+        if (data.status === 'success') {
+          setFeedback({ intent: 'success', message: 'Project updated.' });
+          resetDialog();
+        } else {
+          setFeedback({ intent: 'error', message: typeof data.message === 'string' ? data.message : 'Failed to update the project.' });
+        }
+      }
+      if (data.type === 'papyrusTools.deleteWorkspaceProjectResult') {
+        setPending(false);
+        if (data.status === 'success') {
+          setFeedback({ intent: 'success', message: 'Project deleted.' });
+          resetDialog();
+        } else {
+          setFeedback({ intent: 'error', message: typeof data.message === 'string' ? data.message : 'Failed to delete the project.' });
+        }
+      }
+    };
+
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, []);
+
+  const handleLoadConfirm = () => {
+    if (!dialogState.project) {
+      return;
+    }
+    setPending(true);
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.loadWorkspaceProject',
+      payload: {
+        name: dialogState.project.name,
+        game: dialogState.project.game,
+        namespaceDir: dialogState.project.namespace,
+        outputDir: dialogState.project.outputDir,
+        namespaceFragmentsDir: dialogState.project.namespaceFragmentsDir,
+        outputFragmentsDir: dialogState.project.outputFragmentsDir
+      }
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!dialogState.project) {
+      return;
+    }
+    setPending(true);
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.deleteWorkspaceProject',
+      payload: {
+        name: dialogState.project.name,
+        namespaceDir: dialogState.project.namespace
+      }
+    });
+  };
+
+  const handleEditSubmit = () => {
+    if (!dialogState.project) {
+      return;
+    }
+    if (!editForm.name || !editForm.namespaceDir || !editForm.outputDir) {
+      setFeedback({ intent: 'error', message: 'Project name, namespace, and output folders are required.' });
+      return;
+    }
+    setPending(true);
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.updateWorkspaceProject',
+      payload: {
+        originalName: dialogState.project.name,
+        originalNamespaceDir: dialogState.project.namespace,
+        name: editForm.name,
+        game: editForm.game,
+        namespaceDir: editForm.namespaceDir,
+        outputDir: editForm.outputDir,
+        namespaceFragmentsDir: editForm.namespaceFragmentsDir,
+        outputFragmentsDir: editForm.outputFragmentsDir
+      }
+    });
+  };
+
+  const renderPathCell = (pathValue: string, exists: boolean) => {
+    if (!pathValue) {
+      return <Text size={200} className={styles.mutedText}>Not configured</Text>;
+    }
+    return (
+      <div className={styles.pathCell}>
+        <Link
+          href="#"
+          title={pathValue}
+          onClick={event => {
+            event.preventDefault();
+            handleReveal(pathValue);
+          }}
+        >
+          Link <Open16Regular />
+        </Link>
+        <Text size={200} className={exists ? styles.statusPositive : styles.statusWarning}>
+          {exists ? 'Available' : 'Missing'}
+        </Text>
+      </div>
+    );
+  };
+
+  const dialogOpen = dialogState.mode !== null;
+  const dialogProject = dialogState.project;
+
+  return (
+    <div className={styles.sectionGrid}>
+      <div className={styles.projectsToolbar}>
+        <Field label="Filter by Game">
+          <Select
+            value={selectedGameFilter}
+            onChange={(_, data) => setSelectedGameFilter((data.value as 'all' | GameKey) ?? 'all')}
+            aria-label="Filter projects by game"
+          >
+            <option value="all">All games</option>
+            <option value="starfield">Starfield</option>
+            <option value="fallout">Fallout 4</option>
+            <option value="skyrim">Skyrim SE / AE</option>
+          </Select>
+        </Field>
+        <Button appearance="primary" onClick={onNavigateWorkspace}>
+          New Project
+        </Button>
+      </div>
+
+      {feedback && (
+        <MessageBar intent={feedback.intent === 'success' ? 'success' : 'error'}>
+          <MessageBarBody>
+            <MessageBarTitle>{feedback.intent === 'success' ? 'Success' : 'Action failed'}</MessageBarTitle>
+            <Text size={200}>{feedback.message}</Text>
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {filteredProjects.length === 0 ? (
+        <div className={styles.projectsEmptyState}>
+          {hasProjects ? (
+            <>
+              <Text size={300} weight="semibold">No projects for this filter</Text>
+              <Text size={200} className={styles.mutedText}>Select a different game filter to view your saved projects.</Text>
+              <Button appearance="secondary" onClick={() => setSelectedGameFilter('all')}>Show All Projects</Button>
+            </>
+          ) : (
+            <>
+              <Text size={300} weight="semibold">No projects yet</Text>
+              <Text size={200} className={styles.mutedText}>
+                Create a workspace project to quickly switch between mod configurations.
+              </Text>
+              <Button appearance="secondary" onClick={onNavigateWorkspace}>Create Project</Button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className={styles.projectsTableWrapper}>
+          <Table className={styles.projectsTable} aria-label="Workspace projects">
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Project</TableHeaderCell>
+                <TableHeaderCell>Game</TableHeaderCell>
+                <TableHeaderCell>Source Namespace</TableHeaderCell>
+                <TableHeaderCell>Compiled Output</TableHeaderCell>
+                <TableHeaderCell>Fragments</TableHeaderCell>
+                <TableHeaderCell>Actions</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProjects.map(project => (
+                <TableRow key={`${project.name}::${project.namespace}`}>
+                  <TableCell>
+                    <Text weight="semibold">{project.name}</Text>
+                  </TableCell>
+                  <TableCell>
+                    <Text>{project.game ? PROFILE_LABELS[project.game] : 'Unknown'}</Text>
+                  </TableCell>
+                  <TableCell>{renderPathCell(project.namespace, project.namespaceExists)}</TableCell>
+                  <TableCell>{renderPathCell(project.outputDir, project.outputExists)}</TableCell>
+                  <TableCell>
+                    {project.namespaceFragmentsDir || project.outputFragmentsDir ? (
+                      <div className={styles.projectsFragmentGroup}>
+                        <div className={styles.projectsFragmentItem}>
+                          <Text size={200} weight="semibold">Namespace</Text>
+                          {project.namespaceFragmentsDir
+                            ? renderPathCell(project.namespaceFragmentsDir, project.namespaceFragmentsExists)
+                            : <Text size={200} className={styles.mutedText}>Not configured</Text>}
+                        </div>
+                        <div className={styles.projectsFragmentItem}>
+                          <Text size={200} weight="semibold">Output</Text>
+                          {project.outputFragmentsDir
+                            ? renderPathCell(project.outputFragmentsDir, project.outputFragmentsExists)
+                            : <Text size={200} className={styles.mutedText}>Not configured</Text>}
+                        </div>
+                      </div>
+                    ) : (
+                      <Text size={200} className={styles.mutedText}>Not configured</Text>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className={styles.projectsActions}>
+                      <Button appearance="secondary" disabled={activeProject && project.name === activeProject.name && project.namespace === activeProject.namespaceDir} onClick={() => handleOpenDialog('load', project)}>Load</Button>
+                      <Button appearance="secondary" onClick={() => handleOpenDialog('edit', project)}>Edit</Button>
+                      <Button appearance="secondary" onClick={() => handleOpenDialog('delete', project)}>Delete</Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <Dialog
+        open={dialogOpen}
+        modalType={dialogState.mode === 'delete' ? 'alert' : 'modal'}
+        onOpenChange={(_, data) => {
+          if (!data.open) {
+            resetDialog();
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>
+              {dialogState.mode === 'load' && `Load ${dialogProject?.name ?? 'project'}`}
+              {dialogState.mode === 'edit' && `Edit ${dialogProject?.name ?? 'project'}`}
+              {dialogState.mode === 'delete' && `Delete ${dialogProject?.name ?? 'project'}`}
+            </DialogTitle>
+            <DialogContent>
+              {dialogState.mode === 'load' && dialogProject && (
+                <div className={styles.dialogContentGrid}>
+                  <Text size={200}>Set {dialogProject.name} as the active project for {dialogProject.game ? PROFILE_LABELS[dialogProject.game] : 'the selected game'}.</Text>
+                  <Text size={200}>Source: {dialogProject.namespace || 'Not configured'}</Text>
+                  <Text size={200}>Output: {dialogProject.outputDir || 'Not configured'}</Text>
+                </div>
+              )}
+              {dialogState.mode === 'delete' && dialogProject && (
+                <div className={styles.dialogContentGrid}>
+                  <Text size={200}>This removes the saved definition but leaves files on disk untouched.</Text>
+                  <Text size={200}>Project: {dialogProject.name}</Text>
+                </div>
+              )}
+              {dialogState.mode === 'edit' && (
+                <div className={styles.dialogContentGrid}>
+                  <Field label="Project Name" required>
+                    <Input value={editForm.name} onChange={(_, data) => setEditForm(prev => ({ ...prev, name: data.value }))} />
+                  </Field>
+                  <Field label="Game" required>
+                    <Select value={editForm.game} onChange={(_, data) => setEditForm(prev => ({ ...prev, game: (data.value as GameKey) ?? prev.game }))}>
+                      <option value="starfield">Starfield</option>
+                      <option value="fallout">Fallout 4</option>
+                      <option value="skyrim">Skyrim SE / AE</option>
+                    </Select>
+                  </Field>
+                  <Field label="Source Namespace" required>
+                    <Input value={editForm.namespaceDir} onChange={(_, data) => setEditForm(prev => ({ ...prev, namespaceDir: data.value }))} />
+                  </Field>
+                  <Field label="Compiled Output" required>
+                    <Input value={editForm.outputDir} onChange={(_, data) => setEditForm(prev => ({ ...prev, outputDir: data.value }))} />
+                  </Field>
+                  <Field label="Fragment Namespace">
+                    <Input value={editForm.namespaceFragmentsDir} onChange={(_, data) => setEditForm(prev => ({ ...prev, namespaceFragmentsDir: data.value }))} />
+                  </Field>
+                  <Field label="Fragment Output">
+                    <Input value={editForm.outputFragmentsDir} onChange={(_, data) => setEditForm(prev => ({ ...prev, outputFragmentsDir: data.value }))} />
+                  </Field>
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={resetDialog} disabled={pending}>Cancel</Button>
+              {dialogState.mode === 'load' && (
+                <Button appearance="primary" onClick={handleLoadConfirm} disabled={pending}>
+                  {pending ? 'Loading…' : 'Load Project'}
+                </Button>
+              )}
+              {dialogState.mode === 'delete' && (
+                <Button appearance="primary" onClick={handleDeleteConfirm} disabled={pending}>
+                  {pending ? 'Deleting…' : 'Delete Project'}
+                </Button>
+              )}
+              {dialogState.mode === 'edit' && (
+                <Button appearance="primary" onClick={handleEditSubmit} disabled={pending}>
+                  {pending ? 'Saving…' : 'Save Changes'}
+                </Button>
+              )}
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };
@@ -508,14 +1016,14 @@ const buildInitialWizardState = (): Record<GameKey, WizardGameState> => ({
 });
 
 type AutoDetectResultMessage = {
-  type: 'papyrus.autoDetectResult';
+  type: 'papyrusTools.autoDetectResult';
   status: 'success' | 'empty' | 'error';
   detected?: Record<string, { compilerPath?: string; scriptPaths?: string[] }>;
   message?: string;
 };
 
 type SetupStateMessage = {
-  type: 'papyrus.setupState';
+  type: 'papyrusTools.setupState';
   payload?: Record<string, {
     scriptPaths?: string[];
     compilerPath?: string;
@@ -528,13 +1036,13 @@ type SetupStateMessage = {
 };
 
 type SaveWizardSettingsResultMessage = {
-  type: 'papyrus.saveWizardSettingsResult';
+  type: 'papyrusTools.saveWizardSettingsResult';
   status: 'success' | 'error';
   message?: string;
 };
 
 type PathCheckResultMessage = {
-  type: 'papyrus.pathCheckResult';
+  type: 'papyrusTools.pathCheckResult';
   requestId?: string;
   namespaceExists?: boolean;
   outputExists?: boolean;
@@ -589,7 +1097,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
     setAutoMessage(undefined);
     setAutoStatuses({ starfield: 'pending', fallout: 'pending', skyrim: 'pending' });
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.autoDetect',
+      type: 'papyrusTools.autoDetect',
       payload: { applyAll: true }
     });
   }, []);
@@ -624,13 +1132,13 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
     }
 
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.pathCheck',
+      type: 'papyrusTools.pathCheck',
       payload
     });
   }, []);
 
   React.useEffect(() => {
-    window.__papyrusVsCodeApi?.postMessage({ type: 'papyrus.requestSetupState' });
+    window.__papyrusVsCodeApi?.postMessage({ type: 'papyrusTools.requestSetupState' });
   }, []);
 
   React.useEffect(() => {
@@ -640,7 +1148,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
         return;
       }
 
-      if ((data as SetupStateMessage).type === 'papyrus.setupState') {
+      if ((data as SetupStateMessage).type === 'papyrusTools.setupState') {
         const payload = (data as SetupStateMessage).payload || {};
         const nextStates = buildInitialWizardState();
         const nextRoots: Record<GameKey, string> = { starfield: '', fallout: '', skyrim: '' };
@@ -683,7 +1191,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
         return;
       }
 
-      if ((data as AutoDetectResultMessage).type === 'papyrus.autoDetectResult') {
+      if ((data as AutoDetectResultMessage).type === 'papyrusTools.autoDetectResult') {
         const result = data as AutoDetectResultMessage;
         const detected = result.detected || {};
         const nextRoots: Record<GameKey, string> = { starfield: '', fallout: '', skyrim: '' };
@@ -753,7 +1261,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
         return;
       }
 
-      if ((data as PathCheckResultMessage).type === 'papyrus.pathCheckResult') {
+      if ((data as PathCheckResultMessage).type === 'papyrusTools.pathCheckResult') {
         const result = data as PathCheckResultMessage;
         const requestId = typeof result.requestId === 'string' ? result.requestId : undefined;
         if (!requestId) {
@@ -777,7 +1285,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
         return;
       }
 
-      if ((data as SaveWizardSettingsResultMessage).type === 'papyrus.saveWizardSettingsResult') {
+      if ((data as SaveWizardSettingsResultMessage).type === 'papyrusTools.saveWizardSettingsResult') {
         const message = data as SaveWizardSettingsResultMessage;
         if (message.status === 'success') {
           setSaveFeedback({ state: 'success', message: 'Papyrus settings saved.' });
@@ -1006,7 +1514,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
 
     setSaveFeedback({ state: 'saving' });
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.saveWizardSettings',
+      type: 'papyrusTools.saveWizardSettings',
       payload: { games: gamesPayload }
     });
   }, [gameStates]);
@@ -1058,7 +1566,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                   </MessageBarTitle>
                   <Text size={200}>
                     Run auto-detect again or configure the paths manually in the next step. View current settings{' '}
-                    <Link onClick={() => window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrus.openSettings', payload: { query: '@ext:MrTrilB.papyrus-tools papyrus.games' } })}>here</Link>.
+                    <Link onClick={() => window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrusTools.openSettings', payload: { query: '@ext:MrTrilB.papyrus-tools papyrusTools.games' } })}>here</Link>.
                   </Text>
                 </MessageBarBody>
               </MessageBar>
@@ -1452,20 +1960,38 @@ type WorkspaceProject = {
   game: string;
 };
 
-const WorkspaceContent: React.FC = () => {
+type WorkspaceContentProps = {
+  activeProject?: ActiveProjectSummary;
+};
+
+const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) => {
   const styles = useStyles();
-  const [gameProfile, setGameProfile] = React.useState<GameKey>('starfield');
-  const [codeName, setCodeName] = React.useState('');
+  const [gameProfile, setGameProfile] = React.useState<GameKey>(() => activeProject?.game ?? 'starfield');
+  const [projectName, setProjectName] = React.useState(() => activeProject ? sanitizeNamespaceFolder(activeProject.name) : '');
   const [namespaceFolder, setNamespaceFolder] = React.useState('');
-  const [useFragments, setUseFragments] = React.useState(false);
+  const [useFragments, setUseFragments] = React.useState(() => !!(activeProject?.namespaceFragmentsDir || activeProject?.outputFragmentsDir));
   const [namespaceStatus, setNamespaceStatus] = React.useState<boolean | null>(null);
   const [outputStatus, setOutputStatus] = React.useState<boolean | null>(null);
   const [fragmentNamespaceStatus, setFragmentNamespaceStatus] = React.useState<boolean | null>(null);
   const [fragmentOutputStatus, setFragmentOutputStatus] = React.useState<boolean | null>(null);
+  const [fragmentNamespacePath, setFragmentNamespacePath] = React.useState(activeProject?.namespaceFragmentsDir ?? '');
+  const [fragmentOutputPath, setFragmentOutputPath] = React.useState(activeProject?.outputFragmentsDir ?? '');
+  const [fragmentNamespaceDirty, setFragmentNamespaceDirty] = React.useState(false);
+  const [fragmentOutputDirty, setFragmentOutputDirty] = React.useState(false);
   const [existingProjects, setExistingProjects] = React.useState<WorkspaceProject[]>([]);
   const [saveState, setSaveState] = React.useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = React.useState('');
+  const [showProjectWizard, setShowProjectWizard] = React.useState(!activeProject);
   const pathRequestTypeRef = React.useRef<Map<string, 'primary' | 'fragments'>>(new Map());
+  const prevActiveProjectKeyRef = React.useRef<string>('');
+
+  const extractNamespaceFolder = React.useCallback((value: string) => {
+    if (!value) {
+      return '';
+    }
+    const segments = normalizeWindowsPath(value).split('\\').filter(Boolean);
+    return segments[segments.length - 1] ?? '';
+  }, []);
 
   type FolderState = {
     root: string;
@@ -1487,7 +2013,7 @@ const WorkspaceContent: React.FC = () => {
       return;
     }
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.requestWorkspaceProjects',
+      type: 'papyrusTools.requestWorkspaceProjects',
       payload: { namespace: namespaceDir, game: gameProfile }
     });
   }, [gameProfile]);
@@ -1512,7 +2038,7 @@ const WorkspaceContent: React.FC = () => {
     if (hasRequest) {
       pathRequestTypeRef.current.set(requestId, 'primary');
       window.__papyrusVsCodeApi.postMessage({
-        type: 'papyrus.pathCheck',
+        type: 'papyrusTools.pathCheck',
         payload
       });
     } else {
@@ -1541,7 +2067,7 @@ const WorkspaceContent: React.FC = () => {
       if (fragmentHasRequest) {
         pathRequestTypeRef.current.set(fragmentRequestId, 'fragments');
         window.__papyrusVsCodeApi.postMessage({
-          type: 'papyrus.pathCheck',
+          type: 'papyrusTools.pathCheck',
           payload: fragmentPayload
         });
       }
@@ -1552,14 +2078,58 @@ const WorkspaceContent: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
+    if (!activeProject) {
+      prevActiveProjectKeyRef.current = '';
+      setShowProjectWizard(true);
+      setProjectName('');
+      setNamespaceFolder('');
+      setUseFragments(false);
+      setFragmentNamespacePath('');
+      setFragmentOutputPath('');
+      setFragmentNamespaceDirty(false);
+      setFragmentOutputDirty(false);
+      setNamespaceStatus(null);
+      setOutputStatus(null);
+      setFragmentNamespaceStatus(null);
+      setFragmentOutputStatus(null);
+      return;
+    }
+
+    const key = `${activeProject.game ?? 'any'}::${normalizeWindowsPath(activeProject.namespaceDir).toLowerCase()}`;
+    if (prevActiveProjectKeyRef.current !== key) {
+      prevActiveProjectKeyRef.current = key;
+      setShowProjectWizard(false);
+      setGameProfile(activeProject.game ?? 'starfield');
+      setProjectName(sanitizeNamespaceFolder(activeProject.name));
+      setNamespaceFolder(sanitizeNamespaceFolder(extractNamespaceFolder(activeProject.namespaceDir)));
+      const hasFragments = !!(activeProject.namespaceFragmentsDir || activeProject.outputFragmentsDir);
+      setUseFragments(hasFragments);
+      setFragmentNamespacePath(activeProject.namespaceFragmentsDir || '');
+      setFragmentOutputPath(activeProject.outputFragmentsDir || '');
+      setFragmentNamespaceDirty(false);
+      setFragmentOutputDirty(false);
+      setSaveState('idle');
+      setSaveMessage('');
+      setNamespaceStatus(null);
+      setOutputStatus(null);
+      setFragmentNamespaceStatus(null);
+      setFragmentOutputStatus(null);
+    }
+  }, [activeProject, extractNamespaceFolder]);
+
+  React.useEffect(() => {
     const listener = (event: MessageEvent<any>) => {
       const data = event.data;
       if (!data || typeof data !== 'object') {
         return;
       }
 
-      if (data.type === 'papyrus.setupState' && data.payload) {
-        const payload = data.payload as Record<string, { namespaceDir?: string; outputDir?: string; namespaceFragmentsDir?: string; outputFragmentsDir?: string; rootPath?: string }>;
+      if (data.type === 'papyrusTools.setupState' && data.payload) {
+        const rawPayload = data.payload as { games?: Record<string, any>; setupWizardCompleted?: boolean } | Record<string, any>;
+        const gamesPayload = rawPayload && typeof (rawPayload as any).games === 'object' && !Array.isArray((rawPayload as any).games)
+          ? (rawPayload as { games: Record<string, any> }).games
+          : (rawPayload as Record<string, any>);
+        const payload = gamesPayload;
         const next: Record<GameKey, FolderState> = {
           starfield: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
           fallout: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
@@ -1581,8 +2151,20 @@ const WorkspaceContent: React.FC = () => {
         setFolderState(next);
         const selected = next[gameProfile];
         requestProjectList(selected.namespaceDir);
-        const fragmentNamespaceDir = useFragments && selected.namespaceFragmentsDir ? selected.namespaceFragmentsDir : undefined;
-        const fragmentOutputDir = useFragments && selected.outputFragmentsDir ? selected.outputFragmentsDir : undefined;
+        setFragmentNamespaceDirty(false);
+        setFragmentOutputDirty(false);
+        const derivedFragmentNamespace = useFragments
+          ? (selected.namespaceFragmentsDir && namespaceFolder
+            ? joinWindowsPath(selected.namespaceFragmentsDir, namespaceFolder)
+            : fragmentNamespacePath)
+          : '';
+        const derivedFragmentOutput = useFragments
+          ? (selected.outputFragmentsDir && namespaceFolder
+            ? joinWindowsPath(selected.outputFragmentsDir, namespaceFolder)
+            : fragmentOutputPath)
+          : '';
+        const fragmentNamespaceDir = derivedFragmentNamespace ? normalizeWindowsPath(derivedFragmentNamespace) : undefined;
+        const fragmentOutputDir = derivedFragmentOutput ? normalizeWindowsPath(derivedFragmentOutput) : undefined;
         requestFolderStatus(
           selected.namespaceDir,
           selected.outputDir,
@@ -1591,7 +2173,7 @@ const WorkspaceContent: React.FC = () => {
         );
       }
 
-      if (data.type === 'papyrus.pathCheckResult') {
+      if (data.type === 'papyrusTools.pathCheckResult') {
         const requestId = typeof data.requestId === 'string' ? data.requestId : undefined;
         if (!requestId) {
           return;
@@ -1618,7 +2200,7 @@ const WorkspaceContent: React.FC = () => {
         }
       }
 
-      if (data.type === 'papyrus.workspaceProjects') {
+      if (data.type === 'papyrusTools.workspaceProjects') {
         const projects = Array.isArray(data.projects) ? data.projects : [];
         setExistingProjects(projects.filter((entry: any) => typeof entry?.code === 'string' && entry.code).map((entry: any) => ({
           code: entry.code,
@@ -1626,7 +2208,7 @@ const WorkspaceContent: React.FC = () => {
         })));
       }
 
-      if (data.type === 'papyrus.saveWorkspaceProjectResult') {
+      if (data.type === 'papyrusTools.saveWorkspaceProjectResult') {
         if (data.status === 'success') {
           setSaveState('success');
           setSaveMessage('Workspace project saved.');
@@ -1641,18 +2223,7 @@ const WorkspaceContent: React.FC = () => {
 
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
-  }, [folderState, gameProfile, requestFolderStatus, requestProjectList, useFragments]);
-
-  React.useEffect(() => {
-    const selected = folderState[gameProfile];
-    requestProjectList(selected.namespaceDir);
-    requestFolderStatus(
-      selected.namespaceDir,
-      selected.outputDir,
-      useFragments && selected.namespaceFragmentsDir ? selected.namespaceFragmentsDir : undefined,
-      useFragments && selected.outputFragmentsDir ? selected.outputFragmentsDir : undefined
-    );
-  }, [folderState, gameProfile, requestProjectList, requestFolderStatus, useFragments]);
+  }, [folderState, gameProfile, requestFolderStatus, requestProjectList, useFragments, namespaceFolder, fragmentNamespacePath, fragmentOutputPath]);
 
   const handleGameChange = (_: React.ChangeEvent<HTMLSelectElement>, data: SelectOnChangeData) => {
     const value = (data.value as GameKey | undefined) ?? 'starfield';
@@ -1660,7 +2231,7 @@ const WorkspaceContent: React.FC = () => {
       return;
     }
     setGameProfile(value);
-    setCodeName('');
+    setProjectName('');
     setNamespaceFolder('');
     setUseFragments(false);
     setNamespaceStatus(null);
@@ -1676,7 +2247,68 @@ const WorkspaceContent: React.FC = () => {
   const handleNamespaceChange = (_: unknown, data: { value: string }) => {
     const sanitized = sanitizeNamespaceFolder(data.value);
     setNamespaceFolder(sanitized);
+    setFragmentNamespaceDirty(false);
+    setFragmentOutputDirty(false);
   };
+
+  if (!showProjectWizard && activeProject) {
+    const gameLabel = activeProject.game ? PROFILE_LABELS[activeProject.game] : 'Not assigned';
+    return (
+      <div className={styles.sectionGrid}>
+        <div>
+          <Text weight="semibold">Workspace Project Saved</Text>
+          <Text size={200} className={styles.mutedText}>
+            Saved data for {activeProject.namespaceDir} is ready to use.
+          </Text>
+        </div>
+        <div className={styles.summaryCard}>
+          <Text weight="semibold">{activeProject.name}</Text>
+          <div className={styles.summaryRow}>
+            <Text className={styles.summaryLabel}>Game</Text>
+            <Text className={styles.summaryValue}>{gameLabel}</Text>
+          </div>
+          <div className={styles.summaryRow}>
+            <Text className={styles.summaryLabel}>Source Namespace</Text>
+            <Text className={styles.summaryValue}>{activeProject.namespaceDir}</Text>
+          </div>
+          <div className={styles.summaryRow}>
+            <Text className={styles.summaryLabel}>Compiled Output</Text>
+            <Text className={styles.summaryValue}>{activeProject.outputDir || 'Not configured'}</Text>
+          </div>
+          <div className={styles.summaryRow}>
+            <Text className={styles.summaryLabel}>Fragment Namespace</Text>
+            <Text className={styles.summaryValue}>{activeProject.namespaceFragmentsDir || 'Not configured'}</Text>
+          </div>
+          <div className={styles.summaryRow}>
+            <Text className={styles.summaryLabel}>Fragment Output</Text>
+            <Text className={styles.summaryValue}>{activeProject.outputFragmentsDir || 'Not configured'}</Text>
+          </div>
+        </div>
+        <div className={styles.buttonRow}>
+          <Button
+            appearance="primary"
+            onClick={() => {
+              setShowProjectWizard(true);
+              setNamespaceStatus(null);
+              setOutputStatus(null);
+              setFragmentNamespaceStatus(null);
+              setFragmentOutputStatus(null);
+              setProjectName(sanitizeNamespaceFolder(activeProject.name));
+              setNamespaceFolder(sanitizeNamespaceFolder(extractNamespaceFolder(activeProject.namespaceDir)));
+              const hasFragments = !!(activeProject.namespaceFragmentsDir || activeProject.outputFragmentsDir);
+              setUseFragments(hasFragments);
+              setFragmentNamespacePath(activeProject.namespaceFragmentsDir || '');
+              setFragmentOutputPath(activeProject.outputFragmentsDir || '');
+              setFragmentNamespaceDirty(false);
+              setFragmentOutputDirty(false);
+            }}
+          >
+            Run Project Wizard Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const selectedFolders = folderState[gameProfile];
   const resolvedNamespaceDir = selectedFolders.namespaceDir && namespaceFolder
@@ -1685,15 +2317,54 @@ const WorkspaceContent: React.FC = () => {
   const resolvedOutputDir = selectedFolders.outputDir && namespaceFolder
     ? joinWindowsPath(selectedFolders.outputDir, namespaceFolder)
     : '';
-  const resolvedNamespaceFragmentsDir = selectedFolders.namespaceFragmentsDir && namespaceFolder
-    ? joinWindowsPath(selectedFolders.namespaceFragmentsDir, namespaceFolder)
-    : '';
-  const resolvedOutputFragmentsDir = selectedFolders.outputFragmentsDir && namespaceFolder
-    ? joinWindowsPath(selectedFolders.outputFragmentsDir, namespaceFolder)
-    : '';
+  React.useEffect(() => {
+    if (!useFragments) {
+      if (fragmentNamespacePath) {
+        setFragmentNamespacePath('');
+      }
+      if (fragmentOutputPath) {
+        setFragmentOutputPath('');
+      }
+      setFragmentNamespaceDirty(false);
+      setFragmentOutputDirty(false);
+      return;
+    }
+
+    if (!fragmentNamespaceDirty) {
+      const nextNamespaceFragments = resolvedNamespaceDir
+        ? joinWindowsPath(resolvedNamespaceDir, 'Fragments')
+        : '';
+      if (nextNamespaceFragments !== fragmentNamespacePath) {
+        setFragmentNamespacePath(nextNamespaceFragments);
+      }
+    }
+
+    if (!fragmentOutputDirty) {
+      const nextOutputFragments = resolvedOutputDir
+        ? joinWindowsPath(resolvedOutputDir, 'Fragments')
+        : '';
+      if (nextOutputFragments !== fragmentOutputPath) {
+        setFragmentOutputPath(nextOutputFragments);
+      }
+    }
+  }, [useFragments, resolvedNamespaceDir, resolvedOutputDir, fragmentNamespaceDirty, fragmentOutputDirty, fragmentNamespacePath, fragmentOutputPath]);
+
+  const resolvedNamespaceFragmentsDir = fragmentNamespacePath ? normalizeWindowsPath(fragmentNamespacePath) : '';
+  const resolvedOutputFragmentsDir = fragmentOutputPath ? normalizeWindowsPath(fragmentOutputPath) : '';
 
   const fragmentNamespaceCheck = useFragments && resolvedNamespaceFragmentsDir ? resolvedNamespaceFragmentsDir : undefined;
   const fragmentOutputCheck = useFragments && resolvedOutputFragmentsDir ? resolvedOutputFragmentsDir : undefined;
+
+  React.useEffect(() => {
+    const selected = folderState[gameProfile];
+    requestProjectList(selected.namespaceDir);
+    requestFolderStatus(
+      selected.namespaceDir,
+      selected.outputDir,
+      fragmentNamespaceCheck,
+      fragmentOutputCheck
+    );
+  }, [folderState, gameProfile, requestProjectList, requestFolderStatus, fragmentNamespaceCheck, fragmentOutputCheck]);
 
   React.useEffect(() => {
     if (!namespaceFolder) {
@@ -1745,18 +2416,24 @@ const WorkspaceContent: React.FC = () => {
       setSaveMessage('VS Code API unavailable.');
       return;
     }
-    if (!codeName || !namespaceFolder) {
+    if (!projectName || !namespaceFolder) {
       setSaveState('error');
-      setSaveMessage('Provide a project code name and namespace folder.');
+      setSaveMessage('Provide a project name and namespace folder.');
+      return;
+    }
+    if (useFragments && (!resolvedNamespaceFragmentsDir || !resolvedOutputFragmentsDir)) {
+      setSaveState('error');
+      setSaveMessage('Provide fragment namespace and output folders or disable fragments.');
       return;
     }
     setSaveState('saving');
     setSaveMessage('Saving workspace project...');
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.saveWorkspaceProject',
+      type: 'papyrusTools.saveWorkspaceProject',
       payload: {
         game: gameProfile,
-        code: codeName,
+  projectName,
+  code: projectName,
         namespaceDir: resolvedNamespaceDir,
         outputDir: resolvedOutputDir,
         namespaceFragmentsDir: useFragments ? resolvedNamespaceFragmentsDir : '',
@@ -1769,14 +2446,21 @@ const WorkspaceContent: React.FC = () => {
   const handleToggleFragments = (_: React.ChangeEvent<HTMLInputElement>, data: CheckboxOnChangeData) => {
     const enabled = data.checked === true;
     setUseFragments(enabled);
-    if (!enabled) {
-      setFragmentNamespaceStatus(null);
-      setFragmentOutputStatus(null);
+    if (enabled) {
+      setFragmentNamespaceDirty(false);
+      setFragmentOutputDirty(false);
+    } else {
+      setFragmentNamespacePath('');
+      setFragmentOutputPath('');
+      setFragmentNamespaceDirty(false);
+      setFragmentOutputDirty(false);
     }
+    setFragmentNamespaceStatus(null);
+    setFragmentOutputStatus(null);
   };
 
   React.useEffect(() => {
-    window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrus.requestSetupState' });
+    window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrusTools.requestSetupState' });
   }, []);
 
   React.useEffect(() => {
@@ -1796,8 +2480,6 @@ const WorkspaceContent: React.FC = () => {
 
   const namespaceDisplay = resolvedNamespaceDir || 'Namespace path unavailable. Run the setup wizard to configure it.';
   const outputDisplay = resolvedOutputDir || 'Output path unavailable. Run the setup wizard to configure it.';
-  const fragmentNamespaceDisplay = resolvedNamespaceFragmentsDir || 'Fragment namespace path unavailable. Run the setup wizard to configure fragment folders.';
-  const fragmentOutputDisplay = resolvedOutputFragmentsDir || 'Fragment output path unavailable. Run the setup wizard to configure fragment folders.';
 
   const existingForGame = existingProjects.filter(entry => entry.game === gameProfile);
   const hasNamespaceBasePath = !!resolvedNamespaceDir;
@@ -1823,8 +2505,8 @@ const WorkspaceContent: React.FC = () => {
             <option value="skyrim">Skyrim SE / AE</option>
           </Select>
         </Field>
-        <Field label="Project Code Name" required hint="Used to reference this project when switching between workspaces.">
-          <Input value={codeName} onChange={(_, data) => setCodeName(sanitizeNamespaceFolder(data.value))} placeholder="MyMod" />
+        <Field label="Project Name" required hint="Used to reference this project when switching between workspaces.">
+          <Input value={projectName} onChange={(_, data) => setProjectName(sanitizeNamespaceFolder(data.value))} placeholder="MyMod" />
         </Field>
         <Field label="Mod Namespace" required hint="Creates a folder under your configured namespace/output directories.">
           <Input value={namespaceFolder} onChange={handleNamespaceChange} placeholder="ProjectFolder" />
@@ -1880,14 +2562,28 @@ const WorkspaceContent: React.FC = () => {
         />
         {useFragments && (
           <div className={styles.sectionGridTight}>
-            <div className={styles.summaryRow}>
-              <Text weight="semibold" size={200} className={styles.summaryLabel}>Fragment namespace</Text>
-              <Text size={200} className={styles.summaryValue}>{fragmentNamespaceDisplay}</Text>
-            </div>
-            <div className={styles.summaryRow}>
-              <Text weight="semibold" size={200} className={styles.summaryLabel}>Fragment output</Text>
-              <Text size={200} className={styles.summaryValue}>{fragmentOutputDisplay}</Text>
-            </div>
+            <Field label="Fragment Namespace Path" hint="Full path to the folder that stores fragment source scripts.">
+              <Input
+                value={fragmentNamespacePath}
+                onChange={(_, data) => {
+                  const next = normalizeWindowsPath(data.value);
+                  setFragmentNamespacePath(next);
+                  setFragmentNamespaceDirty(true);
+                }}
+                placeholder="C:/Game/Data/Scripts/Source/Fragments/Quests"
+              />
+            </Field>
+            <Field label="Fragment Output Path" hint="Full path where compiled fragment scripts should be emitted.">
+              <Input
+                value={fragmentOutputPath}
+                onChange={(_, data) => {
+                  const next = normalizeWindowsPath(data.value);
+                  setFragmentOutputPath(next);
+                  setFragmentOutputDirty(true);
+                }}
+                placeholder="C:/Game/Data/Scripts/Fragments/Quests"
+              />
+            </Field>
             {showFragmentStatus ? (
               <div className={styles.sectionGridTight}>
                 {hasFragmentNamespacePath && (
@@ -1913,7 +2609,7 @@ const WorkspaceContent: React.FC = () => {
               </div>
             ) : (
               <Text size={200} className={styles.mutedText}>
-                Configure fragment folders in the setup wizard to enable status checks for these paths.
+                Provide fragment namespace and output paths to enable status checks for these folders.
               </Text>
             )}
           </div>
@@ -1947,7 +2643,7 @@ const WorkspaceContent: React.FC = () => {
         <Button
           appearance="secondary"
           onClick={() => {
-            setCodeName('');
+      setProjectName('');
             setNamespaceFolder('');
             setUseFragments(false);
             setSaveState('idle');
@@ -2006,34 +2702,337 @@ const CompilerContent: React.FC = () => {
 
 const DebuggingContent: React.FC = () => {
   const styles = useStyles();
+  const [scanStatus, setScanStatus] = React.useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
+  const [scanMessage, setScanMessage] = React.useState('');
+  const [diagnosticCount, setDiagnosticCount] = React.useState<number | null>(null);
+  const [lastScanTime, setLastScanTime] = React.useState<Date | null>(null);
+  const [indexStatus, setIndexStatus] = React.useState<'unknown' | 'building' | 'ready' | 'error'>('unknown');
+  const [autoDetectStatus, setAutoDetectStatus] = React.useState<'idle' | 'detecting' | 'success' | 'error'>('idle');
+  const [autoDetectMessage, setAutoDetectMessage] = React.useState('');
+  const [rebuildStatus, setRebuildStatus] = React.useState<'idle' | 'rebuilding' | 'success' | 'error'>('idle');
+  const [rebuildMessage, setRebuildMessage] = React.useState('');
+
+  const handleScanScripts = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      setScanStatus('error');
+      setScanMessage('VS Code API unavailable');
+      return;
+    }
+    setScanStatus('scanning');
+    setScanMessage('Scanning scripts for diagnostics...');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.scanScripts'
+    });
+  }, []);
+
+  const handleRebuildIndex = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      setRebuildStatus('error');
+      setRebuildMessage('VS Code API unavailable');
+      return;
+    }
+    setRebuildStatus('rebuilding');
+    setRebuildMessage('Rebuilding script index...');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.rebuildIndex'
+    });
+  }, []);
+
+  const handleAutoDetect = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      setAutoDetectStatus('error');
+      setAutoDetectMessage('VS Code API unavailable');
+      return;
+    }
+    setAutoDetectStatus('detecting');
+    setAutoDetectMessage('Auto-detecting game paths...');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrus.autoDetect',
+      payload: { applyAll: true }
+    });
+  }, []);
+
+  const handleExportProfile = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.exportProfile'
+    });
+  }, []);
+
+  const handleImportProfile = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.importProfile'
+    });
+  }, []);
+
+  const handleClearSettings = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.clearSettings'
+    });
+  }, []);
+
+  const handleCreateDefaults = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.createDefaults'
+    });
+  }, []);
+
+  const handleOpenSettings = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.openSettings',
+      payload: { query: '@ext:MrTrilB.papyrus-tools papyrus' }
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const listener = (event: MessageEvent<any>) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+
+      if (data.type === 'papyrusTools.scanResult') {
+        if (data.status === 'success') {
+          setScanStatus('success');
+          setScanMessage('Script scan completed successfully');
+          setDiagnosticCount(typeof data.diagnosticCount === 'number' ? data.diagnosticCount : null);
+          setLastScanTime(new Date());
+        } else {
+          setScanStatus('error');
+          setScanMessage(typeof data.message === 'string' ? data.message : 'Scan failed');
+        }
+      } else if (data.type === 'papyrusTools.rebuildResult') {
+        if (data.status === 'success') {
+          setRebuildStatus('success');
+          setRebuildMessage('Index rebuilt successfully');
+          setIndexStatus('ready');
+        } else {
+          setRebuildStatus('error');
+          setRebuildMessage(typeof data.message === 'string' ? data.message : 'Rebuild failed');
+          setIndexStatus('error');
+        }
+      } else if (data.type === 'papyrusTools.autoDetectResult') {
+        if (data.status === 'success') {
+          setAutoDetectStatus('success');
+          setAutoDetectMessage('Auto-detection completed successfully');
+        } else {
+          setAutoDetectStatus('error');
+          setAutoDetectMessage(typeof data.message === 'string' ? data.message : 'Auto-detection failed');
+        }
+      }
+    };
+
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, []);
 
   return (
     <div className={styles.sectionGrid}>
       <div>
-        <Text weight="semibold">Debugging Automation</Text>
-        <Text size={200} className={styles.mutedText}>Review scan settings and trigger index updates.</Text>
+        <Text weight="semibold">Debugging & Diagnostics</Text>
+        <Text size={200} className={styles.mutedText}>
+          Comprehensive tools for troubleshooting Papyrus script issues, managing configurations, and maintaining project health.
+        </Text>
       </div>
+
+      {/* Status Overview */}
       <div className={styles.sectionGridTight}>
-        <Field label="On Save Actions">
-          <Label>Select which diagnostics to run after saving Papyrus files.</Label>
-          <div className={styles.flexRowWrap}>
-            <Button appearance="outline">Lint Scripts</Button>
-            <Button appearance="outline">Rebuild Index</Button>
-            <Button appearance="outline">Validate Includes</Button>
+        <div className={styles.cardHeaderIcon}>
+          <Info20Regular />
+          <Text weight="semibold">System Status</Text>
+        </div>
+        <div className={styles.statusGrid}>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Diagnostics</Text>
+            <div className={styles.statusRow}>
+              {diagnosticCount !== null ? (
+                <>
+                  <Warning20Regular className={diagnosticCount > 0 ? styles.statusIconWarning : styles.statusIconPositive} />
+                  <Text size={200} className={styles.mutedText}>
+                    {diagnosticCount} issues found
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Spinner size="tiny" />
+                  <Text size={200} className={styles.mutedText}>Unknown</Text>
+                </>
+              )}
+            </div>
           </div>
-        </Field>
-        <Field label="Notifications">
-          <Label>Control how Papyrus Tools surfaces compile issues.</Label>
-          <div className={styles.flexRowWrap}>
-            <Button appearance="secondary">Info Messages</Button>
-            <Button appearance="secondary">Status Bar</Button>
-            <Button appearance="secondary">Pop-up Alerts</Button>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Last Scan</Text>
+            <div className={styles.statusRow}>
+              <Clock20Regular />
+              <Text size={200} className={styles.mutedText}>
+                {lastScanTime ? lastScanTime.toLocaleTimeString() : 'Never'}
+              </Text>
+            </div>
           </div>
-        </Field>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Index Status</Text>
+            <div className={styles.statusRow}>
+              {indexStatus === 'building' && <Spinner size="tiny" />}
+              {indexStatus === 'ready' && <CheckmarkCircle20Regular className={styles.statusIconPositive} />}
+              {indexStatus === 'error' && <Warning20Regular className={styles.statusIconWarning} />}
+              {indexStatus === 'unknown' && <Info20Regular />}
+              <Text size={200} className={styles.mutedText}>
+                {indexStatus === 'building' && 'Building...'}
+                {indexStatus === 'ready' && 'Ready'}
+                {indexStatus === 'error' && 'Error'}
+                {indexStatus === 'unknown' && 'Unknown'}
+              </Text>
+            </div>
+          </div>
+        </div>
       </div>
-      <Divider />
-      <div className={styles.buttonRow}>
-        <Button appearance="primary">Run Full Diagnostics</Button>
+
+      {/* Core Diagnostics */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Search20Regular />
+          <Text weight="semibold">Core Diagnostics</Text>
+        </div>
+        <div className={styles.sectionGridTight}>
+          <div className={styles.buttonRow}>
+            <Button
+              appearance="primary"
+              onClick={handleScanScripts}
+              disabled={scanStatus === 'scanning'}
+              icon={scanStatus === 'scanning' ? <Spinner size="tiny" /> : <Search20Regular />}
+            >
+              {scanStatus === 'scanning' ? 'Scanning...' : 'Scan Scripts for Diagnostics'}
+            </Button>
+            <Button
+              appearance="secondary"
+              onClick={handleRebuildIndex}
+              disabled={rebuildStatus === 'rebuilding'}
+              icon={rebuildStatus === 'rebuilding' ? <Spinner size="tiny" /> : <ArrowSync20Regular />}
+            >
+              {rebuildStatus === 'rebuilding' ? 'Rebuilding...' : 'Rebuild Index'}
+            </Button>
+          </div>
+          {(scanStatus !== 'idle' || rebuildStatus !== 'idle') && (
+            <div className={styles.sectionGridTight}>
+              {scanStatus !== 'idle' && (
+                <MessageBar intent={scanStatus === 'success' ? 'success' : scanStatus === 'error' ? 'error' : 'info'}>
+                  <MessageBarBody>
+                    <MessageBarTitle>
+                      {scanStatus === 'scanning' && 'Scanning Scripts'}
+                      {scanStatus === 'success' && 'Scan Complete'}
+                      {scanStatus === 'error' && 'Scan Failed'}
+                    </MessageBarTitle>
+                    <Text size={200} block>{scanMessage}</Text>
+                  </MessageBarBody>
+                </MessageBar>
+              )}
+              {rebuildStatus !== 'idle' && (
+                <MessageBar intent={rebuildStatus === 'success' ? 'success' : rebuildStatus === 'error' ? 'error' : 'info'}>
+                  <MessageBarBody>
+                    <MessageBarTitle>
+                      {rebuildStatus === 'rebuilding' && 'Rebuilding Index'}
+                      {rebuildStatus === 'success' && 'Index Rebuilt'}
+                      {rebuildStatus === 'error' && 'Rebuild Failed'}
+                    </MessageBarTitle>
+                    <Text size={200} block>{rebuildMessage}</Text>
+                  </MessageBarBody>
+                </MessageBar>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Auto-Detection */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Target20Regular />
+          <Text weight="semibold">Auto-Detection</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          Automatically detect and configure game installations and compiler paths from common Steam library locations.
+        </Text>
+        <div className={styles.buttonRow}>
+          <Button
+            appearance="secondary"
+            onClick={handleAutoDetect}
+            disabled={autoDetectStatus === 'detecting'}
+            icon={autoDetectStatus === 'detecting' ? <Spinner size="tiny" /> : <Target20Regular />}
+          >
+            {autoDetectStatus === 'detecting' ? 'Detecting...' : 'Auto-Detect Game Paths'}
+          </Button>
+        </div>
+        {autoDetectStatus !== 'idle' && (
+          <MessageBar intent={autoDetectStatus === 'success' ? 'success' : autoDetectStatus === 'error' ? 'error' : 'info'}>
+            <MessageBarBody>
+              <MessageBarTitle>
+                {autoDetectStatus === 'detecting' && 'Auto-Detecting'}
+                {autoDetectStatus === 'success' && 'Auto-Detection Complete'}
+                {autoDetectStatus === 'error' && 'Auto-Detection Failed'}
+              </MessageBarTitle>
+              <Text size={200} block>{autoDetectMessage}</Text>
+            </MessageBarBody>
+          </MessageBar>
+        )}
+      </div>
+
+      {/* Configuration Management */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Settings20Regular />
+          <Text weight="semibold">Configuration Management</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          Import/export profiles, reset settings, or create default configurations.
+        </Text>
+        <div className={styles.sectionGridTight}>
+          <div className={styles.buttonRow}>
+            <Button appearance="outline" onClick={handleExportProfile} icon={<ArrowExport20Regular />}>
+              Export Current Profile
+            </Button>
+            <Button appearance="outline" onClick={handleImportProfile} icon={<ArrowImport20Regular />}>
+              Import Profile
+            </Button>
+          </div>
+          <div className={styles.buttonRow}>
+            <Button appearance="outline" onClick={handleCreateDefaults} icon={<Add20Regular />}>
+              Create Default Profiles
+            </Button>
+            <Button appearance="outline" onClick={handleClearSettings} icon={<Delete20Regular />}>
+              Clear Stored Settings
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Access */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Link20Regular />
+          <Text weight="semibold">Quick Access</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          Direct access to Papyrus settings and configuration files.
+        </Text>
+        <div className={styles.buttonRow}>
+          <Button appearance="subtle" onClick={handleOpenSettings} icon={<Settings20Regular />}>
+            Open Papyrus Settings
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -2043,6 +3042,8 @@ const AppContent: React.FC = () => {
   const styles = useStyles();
   const [selected, setSelected] = React.useState<SectionKey>('overview');
   const [themeMode, setThemeMode] = React.useState<PapyrusThemeMode>(() => window.__papyrusInitialState?.theme ?? 'light');
+  const [projects, setProjects] = React.useState<OverviewProject[]>([]);
+  const [activeProject, setActiveProject] = React.useState<ActiveProjectSummary | undefined>(undefined);
 
   const persistedState = React.useMemo(() => window.__papyrusVsCodeApi?.getState?.() as { wizardCompleted?: boolean } | undefined, []);
   const [wizardCompleted, setWizardCompleted] = React.useState<boolean>(persistedState?.wizardCompleted ?? false);
@@ -2050,6 +3051,30 @@ const AppContent: React.FC = () => {
 
   const handleNavigate = React.useCallback((section: SectionKey) => {
     setSelected(section);
+  }, []);
+
+  const postWizardCompletion = React.useCallback((completed: boolean) => {
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.setSetupWizardCompleted',
+      payload: { completed }
+    });
+  }, []);
+
+  const normalizeGameKey = React.useCallback((value: unknown): GameKey | undefined => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'starfield') {
+      return 'starfield';
+    }
+    if (normalized === 'fallout' || normalized === 'fallout4') {
+      return 'fallout';
+    }
+    if (normalized === 'skyrim' || normalized === 'skyrimse' || normalized === 'skyrimae') {
+      return 'skyrim';
+    }
+    return undefined;
   }, []);
 
   React.useEffect(() => {
@@ -2062,26 +3087,117 @@ const AppContent: React.FC = () => {
 
   const handleWizardCompleted = React.useCallback(() => {
     setWizardCompleted(true);
-  }, []);
+    postWizardCompletion(true);
+  }, [postWizardCompletion]);
 
   const handleRestartWizard = React.useCallback(() => {
     setWizardCompleted(false);
+    postWizardCompletion(false);
     setWizardInstanceKey(prev => prev + 1);
     setSelected('setupWizard');
-  }, []);
+  }, [postWizardCompletion]);
 
   React.useEffect(() => {
-    const listener = (event: MessageEvent<{ type?: string; theme?: PapyrusThemeMode }>) => {
+    const listener = (event: MessageEvent<{ type?: string; theme?: PapyrusThemeMode; payload?: unknown }>) => {
       if (event.data?.type === 'theme' && event.data.theme) {
         setThemeMode(event.data.theme);
+      }
+      if (event.data?.type === 'papyrusTools.setupState' && event.data.payload && typeof event.data.payload === 'object') {
+        const payload = event.data.payload as { setupWizardCompleted?: boolean; projects?: unknown; activeProject?: unknown };
+        if (typeof payload.setupWizardCompleted === 'boolean') {
+          setWizardCompleted(payload.setupWizardCompleted);
+        }
+        const rawProjects = Array.isArray(payload.projects) ? payload.projects : [];
+        const normalizedProjects: OverviewProject[] = rawProjects
+          .map(entry => {
+            if (!entry || typeof entry !== 'object') {
+              return null;
+            }
+            const obj = entry as Record<string, unknown>;
+            const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+            const namespace = typeof obj.namespace === 'string' ? obj.namespace.trim() : '';
+            if (!name || !namespace) {
+              return null;
+            }
+            const namespaceFolder = typeof obj.namespaceFolder === 'string' ? obj.namespaceFolder.trim() : name;
+            const project: OverviewProject = {
+              name,
+              namespace,
+              namespaceFolder,
+              namespaceExists: obj.namespaceExists === true,
+              outputDir: typeof obj.outputDir === 'string' ? obj.outputDir.trim() : '',
+              outputExists: obj.outputExists === true,
+              namespaceFragmentsDir: typeof obj.namespaceFragmentsDir === 'string' ? obj.namespaceFragmentsDir.trim() : '',
+              namespaceFragmentsExists: obj.namespaceFragmentsExists === true,
+              outputFragmentsDir: typeof obj.outputFragmentsDir === 'string' ? obj.outputFragmentsDir.trim() : '',
+              outputFragmentsExists: obj.outputFragmentsExists === true,
+              game: normalizeGameKey(obj.game)
+            };
+            return project;
+          })
+          .filter((entry): entry is OverviewProject => entry !== null);
+        setProjects(normalizedProjects);
+
+        const rawActiveProject = payload.activeProject;
+        let nextActiveProject: ActiveProjectSummary | undefined;
+        if (rawActiveProject && typeof rawActiveProject === 'object') {
+          const obj = rawActiveProject as Record<string, unknown>;
+          const namespaceDir = typeof obj.namespaceDir === 'string' ? obj.namespaceDir.trim() : '';
+          if (namespaceDir) {
+            const nameValue = typeof obj.name === 'string' ? obj.name.trim() : '';
+            const normalizedNamespace = normalizeWindowsPath(namespaceDir);
+            const segments = normalizedNamespace.split('\\').filter(Boolean);
+            const fallbackName = segments[segments.length - 1] ?? normalizedNamespace;
+            nextActiveProject = {
+              name: nameValue || fallbackName,
+              namespaceDir,
+              outputDir: typeof obj.outputDir === 'string' ? obj.outputDir.trim() : '',
+              namespaceFragmentsDir: typeof obj.namespaceFragmentsDir === 'string' ? obj.namespaceFragmentsDir.trim() : '',
+              outputFragmentsDir: typeof obj.outputFragmentsDir === 'string' ? obj.outputFragmentsDir.trim() : '',
+              game: normalizeGameKey(obj.game)
+            };
+          }
+        }
+
+        setActiveProject(prev => {
+          if (!prev && !nextActiveProject) {
+            return prev;
+          }
+          if (prev && nextActiveProject) {
+            if (
+              prev.name === nextActiveProject.name &&
+              prev.namespaceDir === nextActiveProject.namespaceDir &&
+              prev.outputDir === nextActiveProject.outputDir &&
+              prev.namespaceFragmentsDir === nextActiveProject.namespaceFragmentsDir &&
+              prev.outputFragmentsDir === nextActiveProject.outputFragmentsDir &&
+              prev.game === nextActiveProject.game
+            ) {
+              return prev;
+            }
+          }
+          return nextActiveProject;
+        });
       }
     };
 
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
+  }, [normalizeGameKey]);
+
+  React.useEffect(() => {
+    window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrusTools.requestSetupState' });
   }, []);
 
   const theme = React.useMemo(() => getPapyrusTheme(themeMode), [themeMode]);
+  const activeProjectDisplay = React.useMemo(() => {
+    if (!activeProject) {
+      return 'None configured';
+    }
+    if (activeProject.game && PROFILE_LABELS[activeProject.game]) {
+      return `${activeProject.name} (${PROFILE_LABELS[activeProject.game]})`;
+    }
+    return activeProject.name;
+  }, [activeProject]);
 
   let mainContent: React.ReactNode;
   switch (selected) {
@@ -2105,13 +3221,16 @@ const AppContent: React.FC = () => {
       );
       break;
     case 'workspace':
-      mainContent = <WorkspaceContent />;
+      mainContent = <WorkspaceContent activeProject={activeProject} />;
       break;
     case 'compiler':
       mainContent = <CompilerContent />;
       break;
     case 'debugging':
       mainContent = <DebuggingContent />;
+      break;
+    case 'projects':
+      mainContent = <ProjectsOverview projects={projects} onNavigateWorkspace={() => handleNavigate('workspace')} activeProject={activeProject} />;
       break;
     default:
       mainContent = null;
@@ -2127,13 +3246,14 @@ const AppContent: React.FC = () => {
         </div>
         {[{
           label: undefined,
-          tabs: [{ value: 'overview', label: 'Overview' as const }]
+          tabs: [{ value: 'overview', label: 'Control Centre' as const }]
+        }, {
+          label: undefined,
+          tabs: [{ value: 'projects', label: 'Projects' as const }]
         }, {
           label: 'Settings',
           tabs: [
-            { value: 'setupWizard', label: 'Setup Wizard' as const },
-            { value: 'compiler', label: 'Compiler' as const },
-            { value: 'workspace', label: 'Workspace' as const }
+            { value: 'setupWizard', label: 'Setup Wizard' as const }
           ]
         }, {
           label: 'Troubleshooting',
@@ -2165,19 +3285,26 @@ const AppContent: React.FC = () => {
       <main className={styles.main}>
         <div className={styles.sectionHeader}>
           <Text weight="semibold" size={500}>
-            {selected === 'overview' && 'Overview'}
+            {selected === 'overview' && 'Control Centre'}
             {selected === 'setupWizard' && 'Setup Wizard'}
             {selected === 'workspace' && 'Workspace Setup'}
             {selected === 'compiler' && 'Compiler Settings'}
             {selected === 'debugging' && 'Troubleshooting & Debugging'}
+            {selected === 'projects' && 'Projects'}
           </Text>
           <Text size={200} className={styles.mutedText}>
-            {selected === 'overview' && 'Review key actions and quick shortcuts for Papyrus Tools.'}
+            {selected === 'overview' && 'Access quick actions, workspace status, and project shortcuts.'}
             {selected === 'setupWizard' && 'Run the guided setup to establish paths and profiles for your modding tools.'}
             {selected === 'workspace' && 'Provide workspace metadata to tailor Papyrus helpers to this mod.'}
             {selected === 'compiler' && 'Manage compiler inputs, outputs, and namespaces for Papyrus builds.'}
             {selected === 'debugging' && 'Configure how Papyrus Tools scans and reports issues across scripts.'}
+            {selected === 'projects' && 'Manage and switch between saved workspace project configurations.'}
           </Text>
+          {selected === 'overview' && (
+            <Text size={300} weight="semibold" className={styles.activeProjectLabel}>
+              Active Project: {activeProjectDisplay}
+            </Text>
+          )}
         </div>
         {mainContent}
       </main>

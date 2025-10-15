@@ -11,8 +11,8 @@
     "url": "https://github.com/MrTrilB/PapyrusVSCode.git"
   },
   "bugs": {
-        "url": "https://github.com/MrTrilB/PapyrusVSCode/issues"
-    },
+    "url": "https://github.com/MrTrilB/PapyrusVSCode/issues"
+  },
   "engines": {
     "vscode": "^1.91.0",
     "vscode-insiders": "^1.91.0"
@@ -25,22 +25,23 @@
   "main": "./out/extension.js",
   "sideEffects": false,
   "activationEvents": [
-    "onCommand:papyrus.compileFile",
-    "onCommand:papyrus.switchGame",
-    "onCommand:papyrus.configureCompilers",
-    "onCommand:papyrus.configureScriptFolders",
-    "onCommand:papyrus.rebuildIndex",
-    "onCommand:papyrus.addScriptFolder",
-    "onCommand:papyrus.setupWorkspaceProfile",
-    "onCommand:papyrus.autoDetectGamePaths",
-    "onCommand:papyrus.scanScriptsForDiagnostics",
-    "onCommand:papyrus.openCurrentGameSettings",
-    "onCommand:papyrus.exportCurrentProfile",
-    "onCommand:papyrus.importProfile",
-    "onCommand:papyrus.createDefaultProfiles",
-    "onCommand:papyrus.openWorkspaceSettingsJson",
-    "onCommand:papyrus.clearStoredSettings",
-    "onCommand:papyrus.openControlCenter"
+    "onCommand:papyrusTools.compileFile",
+    "onCommand:papyrusTools.switchGame",
+    "onCommand:papyrusTools.configureCompilers",
+    "onCommand:papyrusTools.configureScriptFolders",
+    "onCommand:papyrusTools.rebuildIndex",
+    "onCommand:papyrusTools.addScriptFolder",
+    "onCommand:papyrusTools.setupWorkspaceProfile",
+    "onCommand:papyrusTools.autoDetectGamePaths",
+    "onCommand:papyrusTools.scanScriptsForDiagnostics",
+    "onCommand:papyrusTools.openCurrentGameSettings",
+    "onCommand:papyrusTools.exportCurrentProfile",
+    "onCommand:papyrusTools.importProfile",
+    "onCommand:papyrusTools.createDefaultProfiles",
+    "onCommand:papyrusTools.openWorkspaceSettingsJson",
+    "onCommand:papyrusTools.clearStoredSettings",
+    "onCommand:papyrusTools.openControlCenter",
+    "onChatParticipant:papyrusTools.assistant"
   ],
   "contributes": {
     "languages": [
@@ -72,67 +73,67 @@
     ],
     "commands": [
       {
-        "command": "papyrus.compileFile",
+        "command": "papyrusTools.compileFile",
         "title": "Papyrus: Compile Current File"
       },
       {
-        "command": "papyrus.switchGame",
+        "command": "papyrusTools.switchGame",
         "title": "Papyrus: Switch Game Profile"
       },
       {
-        "command": "papyrus.configureCompilers",
+        "command": "papyrusTools.configureCompilers",
         "title": "Papyrus: Configure Compiler Paths"
       },
       {
-        "command": "papyrus.configureScriptFolders",
+        "command": "papyrusTools.configureScriptFolders",
         "title": "Papyrus: Configure Script Folders"
       },
       {
-        "command": "papyrus.rebuildIndex",
+        "command": "papyrusTools.rebuildIndex",
         "title": "Papyrus: Rebuild Script Index"
       },
       {
-        "command": "papyrus.addScriptFolder",
+        "command": "papyrusTools.addScriptFolder",
         "title": "Papyrus: Add Script Folder"
       },
       {
-        "command": "papyrus.setupWorkspaceProfile",
+        "command": "papyrusTools.setupWorkspaceProfile",
         "title": "Papyrus: Setup Workspace Profile"
       },
       {
-        "command": "papyrus.autoDetectGamePaths",
+        "command": "papyrusTools.autoDetectGamePaths",
         "title": "Papyrus: Auto-Detect Game Paths"
       },
       {
-        "command": "papyrus.scanScriptsForDiagnostics",
+        "command": "papyrusTools.scanScriptsForDiagnostics",
         "title": "Papyrus: Scan Scripts for Diagnostics"
       },
       {
-        "command": "papyrus.openCurrentGameSettings",
+        "command": "papyrusTools.openCurrentGameSettings",
         "title": "Papyrus: Open Current Game Settings"
       },
       {
-        "command": "papyrus.openWorkspaceSettingsJson",
+        "command": "papyrusTools.openWorkspaceSettingsJson",
         "title": "Papyrus: Open Workspace Settings (JSON)"
       },
       {
-        "command": "papyrus.exportCurrentProfile",
+        "command": "papyrusTools.exportCurrentProfile",
         "title": "Papyrus: Export Current Game Profile"
       },
       {
-        "command": "papyrus.importProfile",
+        "command": "papyrusTools.importProfile",
         "title": "Papyrus: Import Game Profile"
       },
       {
-        "command": "papyrus.createDefaultProfiles",
+        "command": "papyrusTools.createDefaultProfiles",
         "title": "Papyrus: Create Default Game Profiles"
       },
       {
-        "command": "papyrus.clearStoredSettings",
+        "command": "papyrusTools.clearStoredSettings",
         "title": "Papyrus: Clear Stored Settings"
       },
       {
-        "command": "papyrus.openControlCenter",
+        "command": "papyrusTools.openControlCenter",
         "title": "Papyrus: Open Control Center"
       }
     ],
@@ -140,53 +141,53 @@
       "editor/title": [
         {
           "when": "resourceExtname == .psc",
-          "command": "papyrus.compileFile",
+          "command": "papyrusTools.compileFile",
           "group": "navigation@9"
         }
       ],
       "commandPalette": [
         {
-          "command": "papyrus.compileFile",
+          "command": "papyrusTools.compileFile",
           "when": "true"
         },
         {
-          "command": "papyrus.switchGame",
+          "command": "papyrusTools.switchGame",
           "when": "true"
         },
         {
-          "command": "papyrus.autoDetectGamePaths",
+          "command": "papyrusTools.autoDetectGamePaths",
           "when": "true"
         },
         {
-          "command": "papyrus.scanScriptsForDiagnostics",
+          "command": "papyrusTools.scanScriptsForDiagnostics",
           "when": "true"
         },
         {
-          "command": "papyrus.openCurrentGameSettings",
+          "command": "papyrusTools.openCurrentGameSettings",
           "when": "true"
         },
         {
-          "command": "papyrus.openWorkspaceSettingsJson",
+          "command": "papyrusTools.openWorkspaceSettingsJson",
           "when": "true"
         },
         {
-          "command": "papyrus.setupWorkspaceProfile",
+          "command": "papyrusTools.setupWorkspaceProfile",
           "when": "true"
         },
         {
-          "command": "papyrus.exportCurrentProfile",
+          "command": "papyrusTools.exportCurrentProfile",
           "when": "true"
         },
         {
-          "command": "papyrus.importProfile",
+          "command": "papyrusTools.importProfile",
           "when": "true"
         },
         {
-          "command": "papyrus.createDefaultProfiles",
+          "command": "papyrusTools.createDefaultProfiles",
           "when": "true"
         },
         {
-          "command": "papyrus.openControlCenter",
+          "command": "papyrusTools.openControlCenter",
           "when": "true"
         }
       ]
@@ -195,9 +196,9 @@
       "activitybar": [
         {
           "id": "papyrusTools",
-          "title": "Papyrus",
-          "icon": "Assets/Images/Papyrus Tools.svg",
-          "iconDark": "Assets/Images/Papyrus Tools.svg"
+          "title": "Papyrus Tools",
+          "icon": "Assets/Images/PapyrusTools.svg",
+          "iconDark": "Assets/Images/PapyrusTools.svg"
         }
       ]
     },
@@ -205,15 +206,43 @@
       "papyrusTools": [
         {
           "id": "papyrusCommandsView",
-          "name": "Papyrus Commands"
+          "name": "Open Control Center",
+          "icon": "Assets/Images/PapyrusTools.svg",
+          "contextualTitle": "Papyrus Control Center"
         }
       ]
     },
+    "chatParticipants": [
+      {
+        "id": "papyrusTools.assistant",
+        "name": "PapyrusTools",
+        "description": "Get help with Papyrus scripting for Bethesda games",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "help",
+            "description": "Get help with Papyrus scripting concepts and syntax"
+          },
+          {
+            "name": "generate",
+            "description": "Generate Papyrus code snippets"
+          },
+          {
+            "name": "explain",
+            "description": "Explain Papyrus code or concepts"
+          },
+          {
+            "name": "debug",
+            "description": "Help debug Papyrus scripts"
+          }
+        ]
+      }
+    ],
     "configuration": [
       {
         "title": "General",
         "properties": {
-          "papyrus.defaultGame": {
+          "papyrusTools.defaultGame": {
             "type": "string",
             "enum": [
               "Skyrim",
@@ -225,101 +254,119 @@
             "markdownDescription": "Choose your current game so Papyrus Tools knows which compiler and script paths to use, along with any game specific features.",
             "order": 0
           },
-          "papyrus.games": {
+          "papyrusTools.games": {
             "type": "object",
             "default": {},
             "markdownDescription": "Per-game Papyrus settings managed automatically by Papyrus Tools commands (keys: `starfield`, `fallout`, `skyrim`)."
           },
-          "papyrus.SetupWizard": {
+          "papyrusTools.SetupWizard": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "This tells Papyrus Tools if the Setup Wizard has been completed. If you want to run the Setup Wizard again, set this to false and reload VSCode.",
             "description": "This tells Papyrus Tools if the Setup Wizard has been completed. If you want to run the Setup Wizard again, set this to false and reload VSCode.",
-            "order": 0.5  
+            "order": 0.5
           },
-          "papyrus.Projects": {
+          "papyrusTools.Projects": {
             "type": "array",
             "default": [],
             "items": {
-              "type": "string, String"
+              "type": "object",
+              "required": [
+                "name",
+                "namespace"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Unique name for the workspace project.",
+                  "markdownDescription": "Unique name for the workspace project."
+                },
+                "namespace": {
+                  "type": "string",
+                  "description": "Absolute namespace directory associated with the project.",
+                  "markdownDescription": "Absolute namespace directory associated with the project."
+                }
+              },
+              "additionalProperties": false
             },
-            "description": "Per-project Papyrus settings managed automatically by Papyrus Tools commands (keys are workspace folder paths).",
-            "markdownDescription": "Per-project Papyrus settings managed automatically by Papyrus Tools commands (keys are workspace folder paths)."
+            "description": "Projects capture workspace wizard results so Papyrus Tools can re-surface saved namespaces when switching contexts.",
+            "markdownDescription": "Projects capture Workspace Wizard results so Papyrus Tools can re-surface saved namespaces when switching contexts.",
+            "order": 0.75
           }
         }
       },
       {
         "title": "Fallout",
         "properties": {
-          "papyrus.Fallout.autoDetect": {
+          "papyrusTools.Fallout.autoDetect": {
             "type": "boolean",
             "default": true,
             "description": "Automatically detect Fallout 4 installation and script paths.",
             "markdownDescription": "Automatically detect **Fallout 4** installation and script paths.",
             "order": 1
           },
-          "papyrus.Fallout.CompilerDirectory": {
+          "papyrusTools.Fallout.CompilerDirectory": {
             "type": "string",
             "default": "",
             "description": "Path to PapyrusCompiler.exe for Fallout 4.",
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Fallout 4.",
             "order": 2
           },
-          "papyrus.Fallout.ScriptSourceDirectory": {
-              "type": "string",
-              "default": "",
-              "description": "Path to Papyrus scripts for Fallout 4.",
-              "markdownDescription": "Path to **Papyrus scripts** for Fallout 4.",
-              "order": 3
+          "papyrusTools.Fallout.ScriptSourceDirectory": {
+            "type": "string",
+            "default": "",
+            "description": "Path to Papyrus scripts for Fallout 4.",
+            "markdownDescription": "Path to **Papyrus scripts** for Fallout 4.",
+            "order": 3
           },
-          "papyrus.Fallout.compiler.Namespace": {
-              "type": "string",
-              "default": "",
-              "description": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the Fallout 4 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
-              "markdownDescription": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
-              "order": 3.5
+          "papyrusTools.Fallout.compiler.Namespace": {
+            "type": "string",
+            "default": "",
+            "description": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the Fallout 4 Papyrus compiler. If not set, the directory of the script being compiled will be used.",
+            "markdownDescription": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the **Fallout 4 Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
+            "order": 3.5
           },
-          "papyrus.Fallout.compiler.outputDirectory": {
-              "type": "string",
-              "default": "",
-              "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
-              "markdownDescription": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
-              "order": 3.7
+          "papyrusTools.Fallout.compiler.outputDirectory": {
+            "type": "string",
+            "default": "",
+            "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+            "markdownDescription": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. **WARNING:** It is Highly recommended to set this to avoid issues with Fallout 4's script loading.",
+            "order": 3.7
           }
         }
       },
       {
         "title": "Skyrim",
         "properties": {
-          "papyrus.Skyrim.autoDetect": {
+          "papyrusTools.Skyrim.autoDetect": {
             "type": "boolean",
             "default": true,
             "description": "Automatically detect Skyrim installation and script paths.",
             "markdownDescription": "Automatically detect **Skyrim** installation and script paths.",
             "order": 1
           },
-          "papyrus.Skyrim.CompilerDirectory": {
+          "papyrusTools.Skyrim.CompilerDirectory": {
             "type": "string",
             "default": "",
             "description": "Path to PapyrusCompiler.exe for Skyrim.",
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Skyrim.",
             "order": 2
           },
-          "papyrus.Skyrim.ScriptSourceDirectory": {
+          "papyrusTools.Skyrim.ScriptSourceDirectory": {
             "type": "string",
             "default": "",
             "description": "Path to Papyrus scripts for Skyrim.",
             "markdownDescription": "Path to **Papyrus scripts** for Skyrim.",
             "order": 3
           },
-          "papyrus.Skyrim.compiler.Namespace": {
+          "papyrusTools.Skyrim.compiler.Namespace": {
             "type": "string",
             "default": "",
             "description": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the Skyrim Papyrus compiler. If not set, the directory of the script being compiled will be used.",
             "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, that your scripts live and will be used when invoking the **Skyrim Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
             "order": 3.5
           },
-          "papyrus.Skyrim.compiler.outputDirectory": {
+          "papyrusTools.Skyrim.compiler.outputDirectory": {
             "type": "string",
             "default": "",
             "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Skyrim's script loading.",
@@ -331,35 +378,35 @@
       {
         "title": "Starfield",
         "properties": {
-          "papyrus.starfield.autoDetect": {
+          "papyrusTools.starfield.autoDetect": {
             "type": "boolean",
             "default": true,
             "description": "Automatically detect Starfield installation and script paths.",
             "markdownDescription": "Automatically detect **Starfield** installation and script paths.",
             "order": 1
           },
-          "papyrus.starfield.CompilerDirectory": {
+          "papyrusTools.starfield.CompilerDirectory": {
             "type": "string",
             "default": "",
             "description": "Path to PapyrusCompiler.exe for Starfield.",
             "markdownDescription": "Path to **PapyrusCompiler.exe** for Starfield.",
             "order": 2
           },
-          "papyrus.starfield.ScriptSourceDirectory": {
+          "papyrusTools.starfield.ScriptSourceDirectory": {
             "type": "string",
             "default": "",
             "description": "Path to Papyrus scripts for Starfield.",
             "markdownDescription": "Path to **Papyrus scripts** for Starfield.",
             "order": 3
           },
-          "papyrus.starfield.compiler.Namespace": {
+          "papyrusTools.starfield.compiler.Namespace": {
             "type": "string",
             "default": "",
             "description": "This is the Namespace or Working directory, inside the Data folder, that your scripts live and will be used when invoking the Starfield Papyrus compiler. If not set, the directory of the script being compiled will be used.",
             "markdownDescription": "This is the Namespace or Working directory, inside the **Data** folder, that your scripts live and will be used when invoking the **Starfield Papyrus compiler**. If not set, the directory of the script being compiled will be used.",
             "order": 3.5
           },
-          "papyrus.starfield.compiler.outputDirectory": {
+          "papyrusTools.starfield.compiler.outputDirectory": {
             "type": "string",
             "default": "",
             "description": "This is the output directory, inside the Data folder, where compiled scripts will be placed. If not set, the output will go to the same directory as the source script. WARNING: It is Highly recommended to set this to avoid issues with Starfield's script loading.",
@@ -370,7 +417,6 @@
       }
     ]
   },
-
   "scripts": {
     "vscode:prepublish": "npm run webpack-prod",
     "compile": "npm run webpack-dev",
@@ -378,7 +424,7 @@
     "webpack-dev": "webpack --mode development",
     "webpack-prod": "webpack --mode production",
     "package": "vsce package",
-    "lint": "echo 'No linter configured'",
+    "lint": "eslint src --ext .ts,.tsx",
     "test-compile": "tsc -p ./tsconfig.test.json",
     "test": "npm run webpack-dev && npm run test-compile && node ./out/test/runTest.js"
   },
@@ -393,8 +439,11 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/vscode": "^1.91.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.0.0",
+    "eslint": "^9.37.0",
     "glob": "^8.1.0",
     "mocha": "^10.7.3",
     "source-map-loader": "^5.0.0",

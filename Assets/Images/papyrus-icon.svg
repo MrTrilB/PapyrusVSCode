@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 4h12v16H6V4z" fill="currentColor" opacity="0.2"/>
+<path d="M8 7h8v2H8V7z" fill="currentColor"/>
+<path d="M8 11h8v2H8v-2z" fill="currentColor"/>
+<path d="M8 15h5v2H8v-2z" fill="currentColor"/>
+<path d="M6 4h12v1H6V4z" fill="currentColor"/>
+<path d="M6 19h12v1H6v-19z" fill="currentColor"/>
+</svg>
+<parameter name="filePath">c:\Users\Anthony\OneDrive\Modding\PapyrusExstension\Assets\Images\papyrus-icon.svg

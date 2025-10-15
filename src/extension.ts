@@ -91,7 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerPapyrusCommandsView(context);
 
   const getGame = (): GameProfile => {
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const g = cfg.get<string>('defaultGame', 'Starfield');
     return SUPPORTED_GAMES.includes(g as GameProfile) ? (g as GameProfile) : 'Starfield';
   };
@@ -99,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Status bar to show/switch game profile
   const gameStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   gameStatus.name = 'Papyrus Game Profile';
-  gameStatus.command = 'papyrus.switchGame';
+  gameStatus.command = 'papyrusTools.switchGame';
   const updateGameStatus = () => {
     const g = getGame();
     gameStatus.text = `$(tools) Papyrus: ${g}`;
@@ -113,7 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
   settingsStatus.name = 'Papyrus Settings';
   settingsStatus.text = '$(gear)';
   settingsStatus.tooltip = 'Open Papyrus settings for current game';
-  settingsStatus.command = 'papyrus.openCurrentGameSettings';
+  settingsStatus.command = 'papyrusTools.openCurrentGameSettings';
   settingsStatus.show();
 
   // Settings helpers aligned with new per-game configuration layout
@@ -163,7 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
   ];
 
   const clearPapyrusSettingsForTarget = async (target: vscode.ConfigurationTarget) => {
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     for (const key of GENERAL_PAPYRUS_SETTINGS) {
       await cfg.update(key, undefined, target);
     }
@@ -176,9 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
       await updatePapyrusConfig(keys.compilerArgs, undefined, target);
       await updatePapyrusConfig(keys.compilerIncludeFlags, undefined, target);
       await updatePapyrusConfig(keys.namespaceDirectory, undefined, target);
-      await updatePapyrusConfig(keys.namespaceFragmentsDirectory, undefined, target);
       await updatePapyrusConfig(keys.outputDirectory, undefined, target);
-      await updatePapyrusConfig(keys.outputFragmentsDirectory, undefined, target);
       await updatePapyrusConfig(keys.autoDetect, undefined, target);
     }
   };
@@ -437,7 +435,7 @@ export function activate(context: vscode.ExtensionContext) {
     scriptIndex = new Map();
     const game = getGame();
     loadBundledScripts(game);
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const merged = getMergedGameConfig(cfg, game);
     const folders: string[] = merged.scriptPaths || [];
     const globPatterns = folders.map(f => new vscode.RelativePattern(vscode.Uri.file(f).fsPath, '**/*.psc'));
@@ -485,7 +483,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const updatePapyrusConfig = async (key: string | undefined, value: any, target: vscode.ConfigurationTarget) => {
     if (!key) return false;
-    const fullKey = key.startsWith('papyrus.') ? key : `papyrus.${key}`;
+    const fullKey = key.startsWith('papyrusTools.') ? key : `papyrusTools.${key}`;
     const inspected = vscode.workspace.getConfiguration().inspect(fullKey);
     if (!inspected) {
       console.warn(`[Papyrus] Skip update for ${fullKey}: setting is not contributed`);
@@ -505,7 +503,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const clearWorkspaceConfigValue = async (key: string | undefined, expected: string | string[]) => {
     if (!key) return;
-    const fullKey = key.startsWith('papyrus.') ? key : `papyrus.${key}`;
+    const fullKey = key.startsWith('papyrusTools.') ? key : `papyrusTools.${key}`;
     const inspected = vscode.workspace.getConfiguration().inspect<any>(fullKey);
     if (!inspected) return;
     const current = inspected.workspaceValue;
@@ -739,7 +737,7 @@ export function activate(context: vscode.ExtensionContext) {
       return true;
     } catch (error: any) {
       if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-        console.warn(`[Papyrus] Skip update for papyrus.games.${profileKey}: ${error.message}`, error);
+        console.warn(`[Papyrus] Skip update for papyrusTools.games.${profileKey}: ${error.message}`, error);
         return false;
       }
       throw error;
@@ -790,7 +788,7 @@ export function activate(context: vscode.ExtensionContext) {
     const defaults = DEFAULT_PROFILE_DATA[profileKey];
     if (!defaults) return false;
 
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
   const target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global;
     const keys = GAME_SETTING_KEYS[profileKey];
     const scriptConfigValue = keys.scriptDirectory ? (cfg.get<string>(keys.scriptDirectory)?.trim() || '') : '';
@@ -1068,18 +1066,18 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Commands to manage index
-  const rebuildIndexCmd = vscode.commands.registerCommand('papyrus.rebuildIndex', async () => {
+  const rebuildIndexCmd = vscode.commands.registerCommand('papyrusTools.rebuildIndex', async () => {
     await buildIndex();
     vscode.window.showInformationMessage('Papyrus script index rebuilt.');
   });
 
-  const addScriptFolderCmd = vscode.commands.registerCommand('papyrus.addScriptFolder', async () => {
+  const addScriptFolderCmd = vscode.commands.registerCommand('papyrusTools.addScriptFolder', async () => {
     const g = getGame();
     const key = GAME_TO_PROFILE_KEY[g];
     const uri = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select Script Folder' });
     if (!uri || uri.length === 0) return;
     const folder = uri[0].fsPath;
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
   const target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global;
     await updateGameSettingsEntry(cfg, target, key, current => {
       if (current.scriptPaths.length === 1 && current.scriptPaths[0].toLowerCase() === folder.toLowerCase()) {
@@ -1138,11 +1136,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 
   // Scan command: walk configured script paths and produce diagnostics for each file
-  const scanScriptsCmd = vscode.commands.registerCommand('papyrus.scanScriptsForDiagnostics', async () => {
+  const scanScriptsCmd = vscode.commands.registerCommand('papyrusTools.scanScriptsForDiagnostics', async () => {
     const out = vscode.window.createOutputChannel('Papyrus Scan');
     out.clear();
     out.appendLine('Papyrus scan started...');
-  const cfg = vscode.workspace.getConfiguration('papyrus');
+  const cfg = vscode.workspace.getConfiguration('papyrusTools');
   const game = getGame();
   const merged = getMergedGameConfig(cfg, game);
   const scriptPaths: string[] = merged.scriptPaths || [];
@@ -1179,10 +1177,14 @@ export function activate(context: vscode.ExtensionContext) {
                 diagCollection.delete(uri);
               }
               filesScanned++;
-            } catch {}
+            } catch {
+              // Ignore file read errors during scanning
+            }
           }
         }
-      } catch {}
+      } catch {
+        // Ignore scanning errors
+      }
     };
     for (const root of scriptPaths) walk(root);
     out.appendLine(`Scan complete. Files scanned: ${filesScanned}. Files with issues: ${filesWithIssues}.`);
@@ -1199,7 +1201,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Compile command using dedicated interactive flow
-  const compileCmd = vscode.commands.registerCommand('papyrus.compileFile', async () => {
+  const compileCmd = vscode.commands.registerCommand('papyrusTools.compileFile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showErrorMessage('No active editor to compile.');
@@ -1213,7 +1215,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     await doc.save();
 
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const currentGame = getGame();
     const includeFlagSetting: string = cfg.get<string>('compiler.includeFlag') || '-i';
     const pathSeparatorSetting: string = cfg.get<string>('compiler.pathSeparator') || ';';
@@ -1229,9 +1231,9 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Configure script folders command: sets per-game include paths
-  const configureScriptFoldersCmd = vscode.commands.registerCommand('papyrus.configureScriptFolders', async () => {
+  const configureScriptFoldersCmd = vscode.commands.registerCommand('papyrusTools.configureScriptFolders', async () => {
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
 
     // Helper to push a unique path to scriptPaths array for a profile key
   const pushScriptPath = async (profileKey: 'starfield' | 'fallout', newPath: string) => {
@@ -1273,11 +1275,11 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Configure compilers command: prompts for known paths per installed games
-  const configureCompilersCmd = vscode.commands.registerCommand('papyrus.configureCompilers', async () => {
+  const configureCompilersCmd = vscode.commands.registerCommand('papyrusTools.configureCompilers', async () => {
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
 
-    // Helper to update a nested setting under papyrus.games
+    // Helper to update a nested setting under papyrusTools.games
   const updateGameCompiler = async (profileKey: 'starfield' | 'fallout', pathValue: string) => {
       const trimmed = pathValue.trim();
       if (!trimmed) return;
@@ -1314,11 +1316,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Papyrus compiler paths updated (where provided).');
   });
 
-  const setupWorkspaceProfileCmd = vscode.commands.registerCommand('papyrus.setupWorkspaceProfile', async () => {
+  const setupWorkspaceProfileCmd = vscode.commands.registerCommand('papyrusTools.setupWorkspaceProfile', async () => {
     await runWorkspaceSetupWizard();
   });
 
-  const clearStoredSettingsCmd = vscode.commands.registerCommand('papyrus.clearStoredSettings', async () => {
+  const clearStoredSettingsCmd = vscode.commands.registerCommand('papyrusTools.clearStoredSettings', async () => {
     const workspaceAvailable = !!vscode.workspace.workspaceFolders?.length;
     const scopeOptions: Array<{ label: string; detail: string; targets: vscode.ConfigurationTarget[] }> = [];
 
@@ -1361,19 +1363,19 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const openControlCenterCmd = vscode.commands.registerCommand('papyrus.openControlCenter', () => {
+  const openControlCenterCmd = vscode.commands.registerCommand('papyrusTools.openControlCenter', () => {
     ControlCenterPanel.createOrShow(context);
   });
 
   // Open Settings for current game
-  const openCurrentGameSettingsCmd = vscode.commands.registerCommand('papyrus.openCurrentGameSettings', async () => {
+  const openCurrentGameSettingsCmd = vscode.commands.registerCommand('papyrusTools.openCurrentGameSettings', async () => {
     const g = getGame();
     const tl = ((): string => {
       switch (g) {
-        case 'Starfield': return 'papyrus.starfield';
-        case 'Fallout': return 'papyrus.Fallout';
-        case 'Skyrim': return 'papyrus.Skyrim';
-        default: return 'papyrus';
+        case 'Starfield': return 'papyrusTools.starfield';
+        case 'Fallout': return 'papyrusTools.Fallout';
+        case 'Skyrim': return 'papyrusTools.Skyrim';
+        default: return 'papyrusTools';
       }
     })();
     // First switch to Workspace settings tab, then apply filter query for our section
@@ -1382,14 +1384,14 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Open workspace settings JSON directly for transparency
-  const openWorkspaceSettingsJsonCmd = vscode.commands.registerCommand('papyrus.openWorkspaceSettingsJson', async () => {
+  const openWorkspaceSettingsJsonCmd = vscode.commands.registerCommand('papyrusTools.openWorkspaceSettingsJson', async () => {
     await vscode.commands.executeCommand('workbench.action.openWorkspaceSettingsFile');
   });
 
   // Export current game profile (merged) to JSON
-  const exportCurrentProfileCmd = vscode.commands.registerCommand('papyrus.exportCurrentProfile', async () => {
+  const exportCurrentProfileCmd = vscode.commands.registerCommand('papyrusTools.exportCurrentProfile', async () => {
     const g = getGame();
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const merged = getMergedGameConfig(cfg, g);
     const includeFlag: string = cfg.get<string>('compiler.includeFlag') || '-i';
     const pathSeparator: string = cfg.get<string>('compiler.pathSeparator') || ';';
@@ -1421,7 +1423,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Import game profile from JSON
-  const importProfileCmd = vscode.commands.registerCommand('papyrus.importProfile', async () => {
+  const importProfileCmd = vscode.commands.registerCommand('papyrusTools.importProfile', async () => {
     try {
       const pick = await vscode.window.showOpenDialog({
         canSelectFiles: true,
@@ -1452,13 +1454,13 @@ export function activate(context: vscode.ExtensionContext) {
       const includeFlag = typeof data?.includeFlag === 'string' ? data.includeFlag : undefined;
       const pathSeparator = typeof data?.pathSeparator === 'string' ? data.pathSeparator : undefined;
 
-      const cfg = vscode.workspace.getConfiguration('papyrus');
+      const cfg = vscode.workspace.getConfiguration('papyrusTools');
       const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
 
-      // Determine profile key for papyrus.games
+      // Determine profile key for papyrusTools.games
   const profileKey = (game.toLowerCase() as 'skyrim'|'fallout'|'starfield');
 
-      // Merge into papyrus.games[profileKey]
+      // Merge into papyrusTools.games[profileKey]
       const sanitizedScripts = sanitizeStringArray(scripts);
       await updateGameSettingsEntry(cfg, target, profileKey, current => {
         let changed = false;
@@ -1524,12 +1526,12 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   // Auto-detect game installations (Steam) and configure compiler/script paths
-  const autoDetectCmd = vscode.commands.registerCommand('papyrus.autoDetectGamePaths', async (options?: AutoDetectOptions) => {
+  const autoDetectCmd = vscode.commands.registerCommand('papyrusTools.autoDetectGamePaths', async (options?: AutoDetectOptions) => {
     const applyAll = options?.applyAll === true;
     const skipPrompts = options?.skipPrompts === true;
     const silent = options?.silent === true;
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const autoCfg = (cfg.get<any>('autoDetect') || {});
     const envAdditionalRaw = process.env.PAPYRUS_AUTODETECT_BASE_PATHS;
     const envAdditional = envAdditionalRaw ? envAdditionalRaw.split(path.delimiter).map(p => p.trim()).filter(Boolean) : [];
@@ -1601,9 +1603,8 @@ export function activate(context: vscode.ExtensionContext) {
       ];
       for (const r of extraRoots) baseCommonPaths.add(path.normalize(r.replace(/\\/g, '/')));
 
-      // Try to parse Steam libraryfolders.vdf for additional libraries
       const tryRead = (p: string): string | undefined => {
-        try { if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8'); } catch {}
+        try { if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8'); } catch {} // eslint-disable-line no-empty
         return undefined;
       };
       const env = process.env;
@@ -1653,7 +1654,7 @@ export function activate(context: vscode.ExtensionContext) {
       for (const p of candidatePaths) {
         try {
           if (fs.existsSync(p)) return p;
-        } catch {}
+        } catch {} // eslint-disable-line no-empty
       }
       return undefined;
     };
@@ -1855,7 +1856,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Seed default profiles for each game with typical paths
-  const createDefaultProfilesCmd = vscode.commands.registerCommand('papyrus.createDefaultProfiles', async () => {
+  const createDefaultProfilesCmd = vscode.commands.registerCommand('papyrusTools.createDefaultProfiles', async () => {
     let applied = false;
     for (const game of SUPPORTED_GAMES) {
       const result = await applyDefaultProfile(game, { forceCompilerPath: true, rebuildIndex: false });
@@ -1870,25 +1871,331 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Switch game command
-  const switchGameCmd = vscode.commands.registerCommand('papyrus.switchGame', async () => {
+  const switchGameCmd = vscode.commands.registerCommand('papyrusTools.switchGame', async () => {
     const pick = await vscode.window.showQuickPick(SUPPORTED_GAMES, {
       title: 'Select Papyrus game profile',
       placeHolder: 'Choose the target game for Papyrus features and compiler configs'
     });
     if (!pick) return;
     const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
-  await vscode.workspace.getConfiguration('papyrus').update('defaultGame', pick, target);
+  await vscode.workspace.getConfiguration('papyrusTools').update('defaultGame', pick, target);
     updateGameStatus();
     vscode.window.showInformationMessage(`Papyrus game profile set to ${pick}. Defaults will be applied automatically.`);
   });
 
   // React to configuration changes
   const cfgChange = vscode.workspace.onDidChangeConfiguration(async e => {
-  if (e.affectsConfiguration('papyrus.defaultGame')) {
+  if (e.affectsConfiguration('papyrusTools.defaultGame')) {
       updateGameStatus();
       await applyDefaultProfile(getGame(), { notify: true });
     }
   });
+
+  // GitHub Chat Integration
+  const chatParticipant = vscode.chat.createChatParticipant('papyrusTools.assistant', async (request: vscode.ChatRequest, _context: vscode.ChatContext, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) => {
+    const { command, prompt } = request;
+
+    try {
+      switch (command) {
+        case 'help':
+          await handleHelpCommand(prompt, response, _token);
+          break;
+        case 'generate':
+          await handleGenerateCommand(prompt, response, _token);
+          break;
+        case 'explain':
+          await handleExplainCommand(prompt, response, _token);
+          break;
+        case 'debug':
+          await handleDebugCommand(prompt, response, _token);
+          break;
+        default:
+          await handleGeneralQuery(prompt, response, _token);
+          break;
+      }
+    } catch (error) {
+      response.markdown(`Sorry, I encountered an error while processing your request: ${error}`);
+    }
+  });
+
+  // Chat command handlers
+  async function handleHelpCommand(prompt: string, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) {
+    const game = getGame();
+    response.markdown(`## Papyrus Scripting Help for ${game}
+
+### Basic Syntax
+- **Script Declaration**: \`ScriptName MyScript\` (extends ParentScript)
+- **Properties**: \`[Global|Conditional|Hidden] Type Property PropertyName\`
+- **Functions**: \`Function MyFunction(ParamType paramName)\` ... \`EndFunction\`
+- **Events**: \`Event MyEvent(ParamType paramName)\` ... \`EndEvent\`
+
+### Common Keywords
+${getKeywordsForGame(game).slice(0, 10).map(kw => `\`${kw}\``).join(', ')}
+
+### Game-Specific Features
+${game === 'Starfield' ? '- **Structs**: \`Struct MyStruct\` ... \`EndStruct\`' : ''}
+${game === 'Fallout' || game === 'Starfield' ? '- **Arrays**: \`Type[] myArray\`' : ''}
+
+### Getting Started
+1. Set up your game profile with \`Papyrus: Switch Game Profile\`
+2. Configure compiler paths with \`Papyrus: Auto-Detect Game Paths\`
+3. Create scripts in \`.psc\` files
+4. Compile with \`Papyrus: Compile Current File\`
+
+${prompt ? `\n**Your question**: ${prompt}\n\nFeel free to ask me specific questions about Papyrus scripting!` : ''}`);
+  }
+
+  async function handleGenerateCommand(prompt: string, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) {
+    if (!prompt.trim()) {
+      response.markdown('Please describe what Papyrus code you\'d like me to generate. For example: "Generate a script that handles player death" or "Create a function to check if an actor is alive".');
+      return;
+    }
+
+    const game = getGame();
+    response.markdown(`## Generated Papyrus Code for ${game}
+
+\`\`\`papyrus
+; ${prompt}
+ScriptName GeneratedScript
+
+; Auto-generated Papyrus script
+; This is a basic template - customize as needed
+
+; Properties
+Actor Property PlayerRef Auto
+
+; Events
+Event OnInit()
+    ; Initialization code here
+EndEvent
+
+; Functions
+Function ExampleFunction()
+    ; Function implementation
+EndFunction
+\`\`\`
+
+**Note**: This is a basic template. Please review and modify the generated code to fit your specific needs. Make sure to:
+- Set appropriate property references
+- Add proper error handling
+- Test thoroughly before use in production
+
+Would you like me to generate something more specific?`);
+  }
+
+  async function handleExplainCommand(prompt: string, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) {
+    if (!prompt.trim()) {
+      response.markdown('Please provide some Papyrus code or a concept you\'d like me to explain. For example: "Explain how properties work" or paste a code snippet.');
+      return;
+    }
+
+    // Check if it's a code snippet or concept question
+    const isCodeSnippet = prompt.includes('Function') || prompt.includes('Event') || prompt.includes('ScriptName') || prompt.includes('Property');
+
+    if (isCodeSnippet) {
+      response.markdown(`## Code Explanation
+
+Looking at your Papyrus code snippet:
+
+\`\`\`papyrus
+${prompt}
+\`\`\`
+
+### Analysis:
+- **Language**: Papyrus scripting for Bethesda games
+- **Purpose**: ${analyzeCodePurpose(prompt)}
+- **Key Elements**: ${analyzeCodeElements(prompt)}
+
+### Best Practices:
+- Use meaningful variable and function names
+- Add comments for complex logic
+- Handle edge cases and null references
+- Test scripts thoroughly before deployment
+
+Would you like me to suggest improvements or explain any specific part in more detail?`);
+    } else {
+      // Handle concept questions
+      const concept = prompt.toLowerCase();
+      if (concept.includes('property') || concept.includes('properties')) {
+        response.markdown(`## Papyrus Properties
+
+Properties in Papyrus are variables that can be accessed from other scripts and the game engine.
+
+### Syntax:
+\`\`\`papyrus
+[Flags] Type Property PropertyName [Auto|= DefaultValue]
+\`\`\`
+
+### Flags:
+- **Auto**: Automatically filled by the game engine
+- **Conditional**: Can be conditional
+- **Global**: Shared across all instances
+- **Hidden**: Not visible in property windows
+- **ReadOnly**: Cannot be modified after initialization
+
+### Example:
+\`\`\`papyrus
+Actor Property PlayerRef Auto        ; Auto-filled by engine
+Int Property Health = 100            ; With default value
+Global Bool Property IsActive = true ; Global property
+\`\`\`
+
+Properties are essential for script communication and data persistence.`);
+      } else if (concept.includes('function') || concept.includes('functions')) {
+        response.markdown(`## Papyrus Functions
+
+Functions in Papyrus contain reusable code that can be called from other scripts.
+
+### Syntax:
+\`\`\`papyrus
+[Global] ReturnType Function FunctionName(ParameterType paramName, ...)
+    ; Function body
+    Return value ; if not void
+EndFunction
+\`\`\`
+
+### Key Points:
+- **Global functions** can be called without an object reference
+- **Parameters** are passed by value (except arrays and structs)
+- **Return values** are optional
+- Functions can be **overridden** in child scripts
+
+### Example:
+\`\`\`papyrus
+Int Function CalculateDamage(Int baseDamage, Float multiplier)
+    Return Math.Floor(baseDamage * multiplier)
+EndFunction
+\`\`\`
+
+Functions help organize code and promote reusability.`);
+      } else {
+        response.markdown(`## Papyrus Concept: ${prompt}
+
+I'm not sure about that specific concept, but here are some key Papyrus concepts you might find helpful:
+
+### Core Concepts:
+- **Scripts**: The basic unit of Papyrus code
+- **Properties**: Variables accessible across scripts
+- **Functions**: Reusable code blocks
+- **Events**: Code that runs in response to game events
+- **States**: Different behavioral modes for scripts
+
+### Data Types:
+- **Primitive**: Bool, Int, Float, String
+- **Game Objects**: Actor, ObjectReference, Form, etc.
+- **Collections**: Arrays (in newer games)
+
+### Control Flow:
+- **If/ElseIf/Else/EndIf**: Conditional execution
+- **While/EndWhile**: Loops
+- **States**: Script state management
+
+Try asking about a specific concept like "properties", "functions", "events", or "states"!`);
+      }
+    }
+  }
+
+  async function handleDebugCommand(prompt: string, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) {
+    if (!prompt.trim()) {
+      response.markdown('Please describe the issue you\'re experiencing with your Papyrus script. Include any error messages, unexpected behavior, or code snippets that aren\'t working as expected.');
+      return;
+    }
+
+    response.markdown(`## Papyrus Debugging Assistance
+
+### Common Issues & Solutions:
+
+**1. Compilation Errors:**
+- Check for missing semicolons or incorrect syntax
+- Verify all variables are properly declared
+- Ensure function calls match parameter types
+
+**2. Runtime Issues:**
+- Use \`Debug.Trace()\` for logging: \`Debug.Trace("Variable value: " + myVar)\`
+- Check for null references before using objects
+- Verify property references are set correctly
+
+**3. Logic Errors:**
+- Add boundary checks for array access
+- Validate function parameters
+- Test edge cases (empty arrays, zero values, etc.)
+
+### Debug Tools Available:
+- **Papyrus: Scan Scripts for Diagnostics** - Find syntax issues
+- **Papyrus: Rebuild Script Index** - Refresh script references
+- **Debug.Trace()** - Add logging to your scripts
+
+### Your Issue: "${prompt}"
+
+**Suggested Debugging Steps:**
+1. Add Debug.Trace statements to track execution flow
+2. Check the Papyrus log files in your game's directory
+3. Use the Control Center's debugging tools
+4. Test with minimal code to isolate the problem
+
+Would you like me to help analyze a specific error or code snippet?`);
+  }
+
+  async function handleGeneralQuery(prompt: string, response: vscode.ChatResponseStream, _token: vscode.CancellationToken) {
+    const game = getGame();
+    const lowerPrompt = prompt.toLowerCase();
+
+    // Route to appropriate handler based on content
+    if (lowerPrompt.includes('help') || lowerPrompt.includes('how') || lowerPrompt.includes('what')) {
+      await handleHelpCommand(prompt, response, _token);
+    } else if (lowerPrompt.includes('generate') || lowerPrompt.includes('create') || lowerPrompt.includes('make')) {
+      await handleGenerateCommand(prompt, response, _token);
+    } else if (lowerPrompt.includes('explain') || lowerPrompt.includes('understand') || lowerPrompt.includes('mean')) {
+      await handleExplainCommand(prompt, response, _token);
+    } else if (lowerPrompt.includes('debug') || lowerPrompt.includes('error') || lowerPrompt.includes('problem') || lowerPrompt.includes('fix')) {
+      await handleDebugCommand(prompt, response, _token);
+    } else {
+      // General assistance
+      response.markdown(`## Papyrus Assistant
+
+Hello! I'm here to help you with Papyrus scripting for Bethesda games (${game}). I can help you:
+
+### What I Can Do:
+- **📚 Get Help**: Learn Papyrus syntax, keywords, and concepts
+- **⚡ Generate Code**: Create Papyrus script templates and examples
+- **🔍 Explain Code**: Analyze and explain existing Papyrus code
+- **🐛 Debug Issues**: Help troubleshoot script problems
+
+### Quick Commands:
+- \`/help\` - Get general Papyrus help
+- \`/generate\` - Generate code snippets
+- \`/explain\` - Explain code or concepts
+- \`/debug\` - Get debugging assistance
+
+### Your Query: "${prompt}"
+
+Try using one of the specific commands above, or ask me directly about Papyrus scripting concepts, syntax, or best practices!
+
+**Current Game Profile**: ${game}
+**Available Tools**: Compiler, Script Index, Diagnostics, Control Center`);
+    }
+  }
+
+  // Helper functions for code analysis
+  function analyzeCodePurpose(code: string): string {
+    if (code.includes('OnInit')) return 'Script initialization and setup';
+    if (code.includes('OnDeath') || code.includes('OnDying')) return 'Death event handling';
+    if (code.includes('Property') && code.includes('Auto')) return 'Property definitions and references';
+    if (code.includes('Debug.Trace')) return 'Debug logging and diagnostics';
+    if (code.includes('Game.GetPlayer()')) return 'Player interaction and manipulation';
+    return 'General script functionality';
+  }
+
+  function analyzeCodeElements(code: string): string {
+    const elements = [];
+    if (code.includes('ScriptName')) elements.push('Script declaration');
+    if (code.includes('Property')) elements.push('Property definitions');
+    if (code.includes('Function')) elements.push('Function definitions');
+    if (code.includes('Event')) elements.push('Event handlers');
+    if (code.includes('If ') || code.includes('While ')) elements.push('Control flow');
+    if (code.includes('Debug.')) elements.push('Debug statements');
+    return elements.length > 0 ? elements.join(', ') : 'Basic script structure';
+  }
 
   context.subscriptions.push(
     completionProvider,
@@ -1914,7 +2221,8 @@ export function activate(context: vscode.ExtensionContext) {
     ,exportCurrentProfileCmd
     ,importProfileCmd
     ,openWorkspaceSettingsJsonCmd
-    ,createDefaultProfilesCmd
+    ,createDefaultProfilesCmd,
+    chatParticipant
   );
 }
 

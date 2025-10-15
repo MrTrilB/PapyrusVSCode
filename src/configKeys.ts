@@ -8,9 +8,7 @@ export type GameSettingKeys = {
   compilerArgs?: string;
   compilerIncludeFlags?: string;
   namespaceDirectory?: string;
-  namespaceFragmentsDirectory?: string;
   outputDirectory?: string;
-  outputFragmentsDirectory?: string;
   autoDetect?: string;
 };
 
@@ -21,9 +19,7 @@ export const LEGACY_GAME_SETTING_KEYS: Record<GameProfileKey, GameSettingKeys> =
     compilerArgs: 'Skyrim.compiler.args',
     compilerIncludeFlags: 'Skyrim.compiler.includeFlags',
     namespaceDirectory: 'Skyrim.compiler.Namespace',
-    namespaceFragmentsDirectory: 'Skyrim.compiler.NamespaceFragments',
     outputDirectory: 'Skyrim.compiler.outputDirectory',
-    outputFragmentsDirectory: 'Skyrim.compiler.outputDirectoryFragments',
     autoDetect: 'Skyrim.autoDetect'
   },
   fallout: {
@@ -32,9 +28,7 @@ export const LEGACY_GAME_SETTING_KEYS: Record<GameProfileKey, GameSettingKeys> =
     compilerArgs: 'Fallout.compiler.args',
     compilerIncludeFlags: 'Fallout.compiler.includeFlags',
     namespaceDirectory: 'Fallout.compiler.Namespace',
-    namespaceFragmentsDirectory: 'Fallout.compiler.NamespaceFragments',
     outputDirectory: 'Fallout.compiler.outputDirectory',
-    outputFragmentsDirectory: 'Fallout.compiler.outputDirectoryFragments',
     autoDetect: 'Fallout.autoDetect'
   },
   starfield: {
@@ -43,9 +37,7 @@ export const LEGACY_GAME_SETTING_KEYS: Record<GameProfileKey, GameSettingKeys> =
     compilerArgs: 'starfield.compiler.args',
     compilerIncludeFlags: 'starfield.compiler.includeFlags',
     namespaceDirectory: 'starfield.compiler.Namespace',
-    namespaceFragmentsDirectory: 'starfield.compiler.NamespaceFragments',
     outputDirectory: 'starfield.compiler.outputDirectory',
-    outputFragmentsDirectory: 'starfield.compiler.outputDirectoryFragments',
     autoDetect: 'starfield.autoDetect'
   }
 };
@@ -61,19 +53,17 @@ const SUFFIX_MAPPINGS: SuffixMapping[] = [
   { field: 'compilerArgs', suffixes: ['.compiler.args'] },
   { field: 'compilerIncludeFlags', suffixes: ['.compiler.includeflags'] },
   { field: 'namespaceDirectory', suffixes: ['.compiler.namespaceworkingdirectory', '.compiler.namespace'] },
-  { field: 'namespaceFragmentsDirectory', suffixes: ['.compiler.namespaceworkingdirectoryfragments', '.compiler.namespacefragments'] },
   { field: 'outputDirectory', suffixes: ['.compiler.outputdirectory'] },
-  { field: 'outputFragmentsDirectory', suffixes: ['.compiler.outputdirectoryfragments'] },
   { field: 'autoDetect', suffixes: ['.autodetect'] }
 ];
 
 const GAME_MARKERS: Record<GameProfileKey, string[]> = {
-  skyrim: ['.skyrim.', 'skyrim.'],
-  fallout: ['.fallout.', 'fallout.'],
-  starfield: ['.starfield.', 'starfield.']
+  skyrim: ['.papyrusTools.skyrim.', 'papyrusTools.skyrim.'],
+  fallout: ['.papyrusTools.fallout.', 'papyrusTools.fallout.'],
+  starfield: ['.papyrusTools.starfield.', 'papyrusTools.starfield.']
 };
 
-const stripPrefix = (key: string): string => (key.startsWith('papyrus.') ? key.slice('papyrus.'.length) : key);
+const stripPrefix = (key: string): string => (key.startsWith('papyrusTools.') ? key.slice('papyrusTools.'.length) : key);
 
 const collectConfigurationPropertyNames = (configurationContribution: any): string[] => {
   const names = new Set<string>();

@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 import type { PapyrusThemeMode } from './PapyrusFluentUITheme';
 import { App } from './App';
 
-declare let __webpack_public_path__: string;
+declare let __webpack_public_path__: string; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 const setWebpackPublicPath = () => {
   const currentScript = document.currentScript as HTMLScriptElement | null;
