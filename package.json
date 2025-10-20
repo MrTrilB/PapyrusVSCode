@@ -202,6 +202,12 @@
           "icon": "$(add)"
         },
         {
+          "command": "papyrusTools.addFolderToProject",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "navigation@3",
+          "icon": "$(new-folder)"
+        },
+        {
           "command": "papyrusTools.refreshOutputDirectory",
           "when": "view == papyrus-tools-output-folder",
           "group": "navigation@1",
