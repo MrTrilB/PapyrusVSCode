@@ -299,7 +299,7 @@ class PapyrusCommandsProvider implements vscode.TreeDataProvider<PapyrusTreeItem
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
       return entries
-        .filter(entry => entry.name !== '.' && entry.name !== '..')
+        .filter(entry => entry.name !== '.' && entry.name !== '..' && entry.name !== '.vscode')
         .map(entry => {
           const fullPath = path.join(dirPath, entry.name);
           const uri = vscode.Uri.file(fullPath);
@@ -320,7 +320,82 @@ class PapyrusCommandsProvider implements vscode.TreeDataProvider<PapyrusTreeItem
   }
 }
 
-class PapyrusProjectProvider extends PapyrusCommandsProvider {
+class PapyrusProjectProvider extends PapyrusCommandsProvider implements vscode.TreeDragAndDropController<PapyrusTreeItem> {
+  dropMimeTypes = ['application/vnd.code.tree.papyrustools'];
+  dragMimeTypes = ['application/vnd.code.tree.papyrustools'];
+
+  handleDrag(source: readonly PapyrusTreeItem[], dataTransfer: vscode.DataTransfer, _token: vscode.CancellationToken): void | Thenable<void> {
+    dataTransfer.set('application/vnd.code.tree.papyrustools', new vscode.DataTransferItem(source));
+  }
+
+  async handleDrop(target: PapyrusTreeItem | undefined, dataTransfer: vscode.DataTransfer, _token: vscode.CancellationToken): Promise<void> {
+    const transferItem = dataTransfer.get('application/vnd.code.tree.papyrustools');
+    if (!transferItem) {
+      return;
+    }
+
+    const sourceItems = transferItem.value as readonly PapyrusTreeItem[];
+    if (!sourceItems || sourceItems.length === 0) {
+      return;
+    }
+
+    // Determine target directory
+    let targetDir: string;
+    if (target instanceof PapyrusFileItem && target.isDirectory) {
+      targetDir = target.uri.fsPath;
+    } else if (target instanceof PapyrusFileItem && !target.isDirectory) {
+      // If dropping on a file, use its parent directory
+      targetDir = path.dirname(target.uri.fsPath);
+    } else {
+      // Dropping on empty space, use project root
+      const projectDir = this.getProjectDirectory();
+      if (!projectDir) {
+        return;
+      }
+      targetDir = projectDir;
+    }
+
+    // Process each dragged item
+    for (const item of sourceItems) {
+      if (!(item instanceof PapyrusFileItem)) {
+        continue;
+      }
+
+      const sourcePath = item.uri.fsPath;
+      const fileName = path.basename(sourcePath);
+      const targetPath = path.join(targetDir, fileName);
+
+      try {
+        if (sourcePath === targetPath) {
+          continue; // Same location, skip
+        }
+
+        if (fs.existsSync(targetPath)) {
+          const result = await vscode.window.showWarningMessage(
+            `File "${fileName}" already exists in the target location. Overwrite?`,
+            { modal: true },
+            'Overwrite',
+            'Skip'
+          );
+          if (result !== 'Overwrite') {
+            continue;
+          }
+        }
+
+        if (item.isDirectory) {
+          // Move directory
+          fs.renameSync(sourcePath, targetPath);
+        } else {
+          // Move file
+          fs.renameSync(sourcePath, targetPath);
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to move "${fileName}": ${error}`);
+      }
+    }
+
+    this.refresh();
+  }
   getChildren(element?: PapyrusTreeItem): vscode.TreeItem[] {
     if (!element) {
       // Project folder view - show project directory contents
@@ -377,7 +452,8 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
   // Create tree views for project and output views
   const projectView = vscode.window.createTreeView('papyrus-tools-project-folder', {
     treeDataProvider: projectProvider,
-    showCollapseAll: true
+    showCollapseAll: true,
+    dragAndDropController: projectProvider
   });
 
   const outputView = vscode.window.createTreeView('papyrus-tools-output-folder', {
@@ -395,8 +471,8 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
   });
 
   const addFileCmd = vscode.commands.registerCommand('papyrusTools.addFileToProject', async (item?: PapyrusFileItem) => {
-    const projectDir = projectProvider.getProjectDirectory();
-    if (!projectDir) {
+    const activeProject = projectProvider.getActiveProject();
+    if (!activeProject?.namespaceDir) {
       const result = await vscode.window.showErrorMessage(
         'No project directory configured. Would you like to open the Control Center to set up a project?',
         'Open Control Center',
@@ -408,8 +484,20 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
       return;
     }
 
-    // If an item was passed (from right-click), use its directory, otherwise use project root
-    const targetDir = item && item.isDirectory ? item.uri.fsPath : projectDir;
+    // Determine target directory based on context
+    let targetDir: string;
+    let isInFragments = false;
+
+    if (item && item.isDirectory) {
+      // Right-clicked on a directory
+      targetDir = item.uri.fsPath;
+      isInFragments = activeProject.namespaceFragmentsDir ?
+        targetDir.startsWith(activeProject.namespaceFragmentsDir) : false;
+    } else {
+      // Clicked on main view or empty space - use project root, not fragments
+      targetDir = activeProject.namespaceDir;
+      isInFragments = false;
+    }
 
     const fileName = await vscode.window.showInputBox({
       prompt: 'Enter the name of the new Papyrus file',
@@ -428,8 +516,32 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
         return;
       }
 
-      // Create basic Papyrus script template
-      const template = `ScriptName ${path.basename(finalFileName, '.psc')} Extends ObjectReference
+      // Create appropriate template based on location
+      const scriptName = path.basename(finalFileName, '.psc');
+      let template: string;
+
+      if (isInFragments) {
+        // Fragment script template
+        template = `ScriptName ${scriptName} Extends Quest
+
+; Fragment script for quest functionality
+; This script is attached to a quest and contains fragment functions
+
+Function Fragment_0()
+    ; Called from quest stage 0
+EndFunction
+
+Function Fragment_1()
+    ; Called from quest stage 1
+EndFunction
+
+Function Fragment_2()
+    ; Called from quest stage 2
+EndFunction
+`;
+      } else {
+        // Regular script template
+        template = `ScriptName ${scriptName} Extends ObjectReference
 
 ; Add your script logic here
 
@@ -437,6 +549,8 @@ Function OnInit()
     ; Called when the script initializes
 EndFunction
 `;
+      }
+
       fs.writeFileSync(filePath, template, 'utf8');
       projectProvider.refresh();
 
