@@ -413,17 +413,15 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
 
     const fileName = await vscode.window.showInputBox({
       prompt: 'Enter the name of the new Papyrus file',
-      placeHolder: 'MyScript.psc'
+      placeHolder: 'MyScript'
     });
 
     if (!fileName) return;
 
-    if (!fileName.toLowerCase().endsWith('.psc')) {
-      vscode.window.showErrorMessage('File must have .psc extension');
-      return;
-    }
+    // Automatically append .psc extension if not present
+    const finalFileName = fileName.toLowerCase().endsWith('.psc') ? fileName : `${fileName}.psc`;
 
-    const filePath = path.join(targetDir, fileName);
+    const filePath = path.join(targetDir, finalFileName);
     try {
       if (fs.existsSync(filePath)) {
         vscode.window.showErrorMessage('File already exists');
@@ -431,7 +429,7 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
       }
 
       // Create basic Papyrus script template
-      const template = `ScriptName ${path.basename(fileName, '.psc')} Extends ObjectReference
+      const template = `ScriptName ${path.basename(finalFileName, '.psc')} Extends ObjectReference
 
 ; Add your script logic here
 
