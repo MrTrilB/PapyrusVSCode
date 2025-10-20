@@ -486,6 +486,58 @@ EndFunction
     }
   });
 
+  const deleteFileCmd = vscode.commands.registerCommand('papyrusTools.deleteFileFromProject', async (item: PapyrusFileItem) => {
+    if (!item || item.isDirectory) {
+      return;
+    }
+
+    const fileName = path.basename(item.uri.fsPath);
+    const result = await vscode.window.showWarningMessage(
+      `Are you sure you want to delete "${fileName}"?`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (result !== 'Delete') {
+      return;
+    }
+
+    try {
+      fs.unlinkSync(item.uri.fsPath);
+      projectProvider.refresh();
+      vscode.window.showInformationMessage(`File "${fileName}" deleted successfully`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete file: ${error}`);
+    }
+  });
+
+  const deleteFolderCmd = vscode.commands.registerCommand('papyrusTools.deleteFolderFromProject', async (item: PapyrusFileItem) => {
+    if (!item || !item.isDirectory) {
+      return;
+    }
+
+    const folderName = path.basename(item.uri.fsPath);
+    const result = await vscode.window.showWarningMessage(
+      `Are you sure you want to delete the folder "${folderName}" and all its contents?`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (result !== 'Delete') {
+      return;
+    }
+
+    try {
+      fs.rmSync(item.uri.fsPath, { recursive: true, force: true });
+      projectProvider.refresh();
+      vscode.window.showInformationMessage(`Folder "${folderName}" deleted successfully`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete folder: ${error}`);
+    }
+  });
+
   // Listen for configuration changes to update the views
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('papyrusTools.games') || e.affectsConfiguration('papyrusTools.Projects') || e.affectsConfiguration('papyrusTools.defaultGame')) {
@@ -504,6 +556,8 @@ EndFunction
     refreshOutputCmd,
     addFileCmd,
     addFolderCmd,
+    deleteFileCmd,
+    deleteFolderCmd,
     configChangeDisposable
   );
 

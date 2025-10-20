@@ -173,6 +173,16 @@
         "command": "papyrusTools.addFolderToProject",
         "title": "Add Folder",
         "icon": "$(new-folder)"
+      },
+      {
+        "command": "papyrusTools.deleteFileFromProject",
+        "title": "Delete File",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "papyrusTools.deleteFolderFromProject",
+        "title": "Delete Folder",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -239,6 +249,16 @@
           "command": "papyrusTools.addFolderToProject",
           "when": "view == papyrus-tools-project-folder && viewItem == papyrusDirectory",
           "group": "7_modification@2"
+        },
+        {
+          "command": "papyrusTools.deleteFileFromProject",
+          "when": "view == papyrus-tools-project-folder && viewItem == papyrusFile",
+          "group": "7_modification@3"
+        },
+        {
+          "command": "papyrusTools.deleteFolderFromProject",
+          "when": "view == papyrus-tools-project-folder && viewItem == papyrusDirectory",
+          "group": "7_modification@4"
         }
       ],
       "commandPalette": [
