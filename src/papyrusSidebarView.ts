@@ -347,12 +347,12 @@ class PapyrusProjectProvider extends PapyrusCommandsProvider implements vscode.T
       // If dropping on a file, use its parent directory
       targetDir = path.dirname(target.uri.fsPath);
     } else {
-      // Dropping on empty space, use project root
-      const projectDir = this.getProjectDirectory();
-      if (!projectDir) {
+      // Dropping on empty space - use the namespace directory (root)
+      const activeProject = this.getActiveProject();
+      if (!activeProject?.namespaceDir) {
         return;
       }
-      targetDir = projectDir;
+      targetDir = activeProject.namespaceDir;
     }
 
     // Process each dragged item
@@ -398,10 +398,11 @@ class PapyrusProjectProvider extends PapyrusCommandsProvider implements vscode.T
   }
   getChildren(element?: PapyrusTreeItem): vscode.TreeItem[] {
     if (!element) {
-      // Project folder view - show project directory contents
-      const projectDir = this.getProjectDirectory();
-      if (projectDir) {
-        return this.getDirectoryContents(projectDir);
+      // Project folder view - show the namespace directory as root
+      const activeProject = this.getActiveProject();
+      if (activeProject?.namespaceDir) {
+        const uri = vscode.Uri.file(activeProject.namespaceDir);
+        return [new PapyrusFileItem(uri, true)];
       } else {
         return [new PapyrusDummyItem('No project directory configured', 'Use Control Center to set up a project', 'warning')];
       }
@@ -563,8 +564,8 @@ EndFunction
   });
 
   const addFolderCmd = vscode.commands.registerCommand('papyrusTools.addFolderToProject', async (item?: PapyrusFileItem) => {
-    const projectDir = projectProvider.getProjectDirectory();
-    if (!projectDir) {
+    const activeProject = projectProvider.getActiveProject();
+    if (!activeProject?.namespaceDir) {
       const result = await vscode.window.showErrorMessage(
         'No project directory configured. Would you like to open the Control Center to set up a project?',
         'Open Control Center',
@@ -577,7 +578,7 @@ EndFunction
     }
 
     // If an item was passed (from right-click), use its directory, otherwise use project root
-    const targetDir = item && item.isDirectory ? item.uri.fsPath : projectDir;
+    const targetDir = item && item.isDirectory ? item.uri.fsPath : activeProject.namespaceDir;
 
     const folderName = await vscode.window.showInputBox({
       prompt: 'Enter the name of the new folder',
