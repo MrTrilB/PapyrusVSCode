@@ -394,12 +394,15 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
     outputProvider.refresh();
   });
 
-  const addFileCmd = vscode.commands.registerCommand('papyrusTools.addFileToProject', async () => {
+  const addFileCmd = vscode.commands.registerCommand('papyrusTools.addFileToProject', async (item?: PapyrusFileItem) => {
     const projectDir = projectProvider.getProjectDirectory();
     if (!projectDir) {
       vscode.window.showErrorMessage('No project directory configured');
       return;
     }
+
+    // If an item was passed (from right-click), use its directory, otherwise use project root
+    const targetDir = item && item.isDirectory ? item.uri.fsPath : projectDir;
 
     const fileName = await vscode.window.showInputBox({
       prompt: 'Enter the name of the new Papyrus file',
@@ -413,7 +416,7 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
       return;
     }
 
-    const filePath = path.join(projectDir, fileName);
+    const filePath = path.join(targetDir, fileName);
     try {
       if (fs.existsSync(filePath)) {
         vscode.window.showErrorMessage('File already exists');
@@ -440,12 +443,15 @@ EndFunction
     }
   });
 
-  const addFolderCmd = vscode.commands.registerCommand('papyrusTools.addFolderToProject', async () => {
+  const addFolderCmd = vscode.commands.registerCommand('papyrusTools.addFolderToProject', async (item?: PapyrusFileItem) => {
     const projectDir = projectProvider.getProjectDirectory();
     if (!projectDir) {
       vscode.window.showErrorMessage('No project directory configured');
       return;
     }
+
+    // If an item was passed (from right-click), use its directory, otherwise use project root
+    const targetDir = item && item.isDirectory ? item.uri.fsPath : projectDir;
 
     const folderName = await vscode.window.showInputBox({
       prompt: 'Enter the name of the new folder',
@@ -454,7 +460,7 @@ EndFunction
 
     if (!folderName) return;
 
-    const folderPath = path.join(projectDir, folderName);
+    const folderPath = path.join(targetDir, folderName);
     try {
       if (fs.existsSync(folderPath)) {
         vscode.window.showErrorMessage('Folder already exists');

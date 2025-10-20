@@ -196,6 +196,12 @@
           "icon": "$(refresh)"
         },
         {
+          "command": "papyrusTools.addFileToProject",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "navigation@2",
+          "icon": "$(add)"
+        },
+        {
           "command": "papyrusTools.refreshOutputDirectory",
           "when": "view == papyrus-tools-output-folder",
           "group": "navigation@1",
@@ -220,12 +226,12 @@
         },
         {
           "command": "papyrusTools.addFileToProject",
-          "when": "view == papyrus-tools-project-folder",
+          "when": "view == papyrus-tools-project-folder && viewItem == papyrusDirectory",
           "group": "7_modification@1"
         },
         {
           "command": "papyrusTools.addFolderToProject",
-          "when": "view == papyrus-tools-project-folder",
+          "when": "view == papyrus-tools-project-folder && viewItem == papyrusDirectory",
           "group": "7_modification@2"
         }
       ],
