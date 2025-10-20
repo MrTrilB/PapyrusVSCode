@@ -492,8 +492,9 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
     if (item && item.isDirectory) {
       // Right-clicked on a directory
       targetDir = item.uri.fsPath;
-      isInFragments = activeProject.namespaceFragmentsDir ?
-        targetDir.startsWith(activeProject.namespaceFragmentsDir) : false;
+      // Check if the target directory path contains "Fragments" folder
+      const pathParts = targetDir.split(path.sep);
+      isInFragments = pathParts.includes('Fragments');
     } else {
       // Clicked on main view or empty space - use project root, not fragments
       targetDir = activeProject.namespaceDir;
