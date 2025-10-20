@@ -397,7 +397,14 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
   const addFileCmd = vscode.commands.registerCommand('papyrusTools.addFileToProject', async (item?: PapyrusFileItem) => {
     const projectDir = projectProvider.getProjectDirectory();
     if (!projectDir) {
-      vscode.window.showErrorMessage('No project directory configured');
+      const result = await vscode.window.showErrorMessage(
+        'No project directory configured. Would you like to open the Control Center to set up a project?',
+        'Open Control Center',
+        'Cancel'
+      );
+      if (result === 'Open Control Center') {
+        await vscode.commands.executeCommand('papyrusTools.openControlCenter');
+      }
       return;
     }
 
@@ -446,7 +453,14 @@ EndFunction
   const addFolderCmd = vscode.commands.registerCommand('papyrusTools.addFolderToProject', async (item?: PapyrusFileItem) => {
     const projectDir = projectProvider.getProjectDirectory();
     if (!projectDir) {
-      vscode.window.showErrorMessage('No project directory configured');
+      const result = await vscode.window.showErrorMessage(
+        'No project directory configured. Would you like to open the Control Center to set up a project?',
+        'Open Control Center',
+        'Cancel'
+      );
+      if (result === 'Open Control Center') {
+        await vscode.commands.executeCommand('papyrusTools.openControlCenter');
+      }
       return;
     }
 
