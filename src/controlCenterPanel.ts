@@ -379,6 +379,26 @@ export class ControlCenterPanel {
     return projects;
   }
 
+  private removeProjectsByNameOrNamespace(
+    projects: Array<{ name: string; namespace: string; active?: boolean }>,
+    projectName: string,
+    namespaceDir: string
+  ): Array<{ name: string; namespace: string; active?: boolean }> {
+    const normalizedName = typeof projectName === 'string' ? projectName.trim().toLowerCase() : '';
+    const normalizedNamespace = this.normalizeFsPath(namespaceDir).toLowerCase();
+    return projects.filter(project => {
+      const entryName = project.name.trim().toLowerCase();
+      if (normalizedName && entryName === normalizedName) {
+        return false;
+      }
+      const entryNamespace = this.normalizeFsPath(project.namespace).toLowerCase();
+      if (normalizedNamespace && entryNamespace === normalizedNamespace) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   private normalizeFsPath(value: unknown): string {
     if (typeof value !== 'string') {
       return '';
@@ -987,13 +1007,12 @@ export class ControlCenterPanel {
         }
       }
 
-      const cfg = vscode.workspace.getConfiguration('papyrusTools');
-      const targetScope = vscode.ConfigurationTarget.Global;
-      const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
-  const lowerName = projectName.toLowerCase();
-  const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== lowerName);
-  updatedProjects.push({ name: projectName, namespace: namespaceDir, active: false });
-      await cfg.update('Projects', updatedProjects, targetScope);
+        const cfg = vscode.workspace.getConfiguration('papyrusTools');
+        const targetScope = vscode.ConfigurationTarget.Global;
+        const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
+        const updatedProjects = this.removeProjectsByNameOrNamespace(existingProjects, projectName, namespaceDir);
+        updatedProjects.push({ name: projectName, namespace: namespaceDir, active: false });
+        await cfg.update('Projects', updatedProjects, targetScope);
 
       this.panel.webview.postMessage({
         type: 'papyrusTools.saveWorkspaceProjectResult',
@@ -1043,23 +1062,17 @@ export class ControlCenterPanel {
 
       // Update the Projects setting to manage active state
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
-      const updatedProjects = existingProjects.map(project => ({
+      let updatedProjects = this.removeProjectsByNameOrNamespace(existingProjects, projectName, namespaceDir);
+      updatedProjects = updatedProjects.map(project => ({
         ...project,
         active: false // Set all existing projects to inactive
       }));
 
-      // Find the project being loaded and set it to active
-      const projectIndex = updatedProjects.findIndex(p => p.name === projectName && p.namespace === namespaceDir);
-      if (projectIndex >= 0) {
-        updatedProjects[projectIndex].active = true;
-      } else {
-        // If project not found in settings, add it as active
-        updatedProjects.push({
-          name: projectName,
-          namespace: namespaceDir,
-          active: true
-        });
-      }
+      updatedProjects.push({
+        name: projectName,
+        namespace: namespaceDir,
+        active: true
+      });
 
       await cfg.update('Projects', updatedProjects, target);
 
@@ -1231,7 +1244,12 @@ export class ControlCenterPanel {
       const cfg = vscode.workspace.getConfiguration('papyrusTools');
       const target = vscode.ConfigurationTarget.Global;
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
-      const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== (originalName || projectName).toLowerCase());
+      let updatedProjects = existingProjects;
+      if (originalName) {
+        const normalizedOriginalName = originalName.toLowerCase();
+        updatedProjects = updatedProjects.filter(entry => entry.name.toLowerCase() !== normalizedOriginalName);
+      }
+      updatedProjects = this.removeProjectsByNameOrNamespace(updatedProjects, projectName, namespaceDir);
       updatedProjects.push({ name: projectName, namespace: namespaceDir, active: false });
       await cfg.update('Projects', updatedProjects, target);
 
@@ -1299,7 +1317,7 @@ export class ControlCenterPanel {
       const cfg = vscode.workspace.getConfiguration('papyrusTools');
       const target = vscode.ConfigurationTarget.Global;
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
-      const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== projectName.toLowerCase());
+      const updatedProjects = this.removeProjectsByNameOrNamespace(existingProjects, projectName, namespaceDir);
       await cfg.update('Projects', updatedProjects, target);
 
       this.panel.webview.postMessage({
