@@ -139,7 +139,7 @@ export const loadGameConfigurationKeys = (extensionPath: string): Record<GamePro
     const propertyNames = collectConfigurationPropertyNames(packageJson?.contributes?.configuration);
     return resolveGameConfigurationKeys(propertyNames);
   } catch (error) {
-    console.warn('[Papyrus] Failed to load configuration keys from package.json:', error);
+    console.warn('[Papyrus Tools] Failed to load configuration keys from package.json:', error);
     return { ...LEGACY_GAME_SETTING_KEYS };
   }
 };

@@ -25,6 +25,9 @@
   "main": "./out/extension.js",
   "sideEffects": false,
   "activationEvents": [
+    "onView:papyrus-tools-main",
+    "onView:papyrus-tools-project-folder",
+    "onView:papyrus-tools-output-folder",
     "onCommand:papyrusTools.compileFile",
     "onCommand:papyrusTools.switchGame",
     "onCommand:papyrusTools.configureCompilers",
@@ -44,6 +47,12 @@
     "onChatParticipant:papyrusTools.assistant"
   ],
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "papyrus-tools-mcp",
+        "label": "Papyrus Tools MCP Server"
+      }
+    ],
     "languages": [
       {
         "id": "papyrus",
@@ -74,11 +83,23 @@
     "commands": [
       {
         "command": "papyrusTools.compileFile",
-        "title": "Papyrus: Compile Current File"
+        "title": "Papyrus: Compile Current File",
+        "icon": "$(tools)"
       },
       {
         "command": "papyrusTools.switchGame",
-        "title": "Papyrus: Switch Game Profile"
+        "title": "Papyrus: Switch Game Profile",
+        "icon": "$(game)"
+      },
+      {
+        "command": "papyrusTools.switchProject",
+        "title": "Papyrus: Switch Project",
+        "icon": "$(project)"
+      },
+      {
+        "command": "papyrusTools.openControlCenter",
+        "title": "Papyrus: Open Control Center",
+        "icon": "$(settings)"
       },
       {
         "command": "papyrusTools.configureCompilers",
@@ -114,7 +135,8 @@
       },
       {
         "command": "papyrusTools.openWorkspaceSettingsJson",
-        "title": "Papyrus: Open Workspace Settings (JSON)"
+        "title": "Papyrus: Open Workspace Settings (JSON)",
+        "icon": "$(json)"
       },
       {
         "command": "papyrusTools.exportCurrentProfile",
@@ -133,16 +155,78 @@
         "title": "Papyrus: Clear Stored Settings"
       },
       {
-        "command": "papyrusTools.openControlCenter",
-        "title": "Papyrus: Open Control Center"
+        "command": "papyrusTools.refreshProjectDirectory",
+        "title": "Refresh Project Directory",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "papyrusTools.refreshOutputDirectory",
+        "title": "Refresh Output Directory",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "papyrusTools.addFileToProject",
+        "title": "Add File",
+        "icon": "$(add)"
+      },
+      {
+        "command": "papyrusTools.addFolderToProject",
+        "title": "Add Folder",
+        "icon": "$(new-folder)"
       }
     ],
     "menus": {
-      "editor/title": [
+      "view/title": [
         {
-          "when": "resourceExtname == .psc",
-          "command": "papyrusTools.compileFile",
-          "group": "navigation@9"
+          "command": "papyrusTools.openControlCenter",
+          "when": "view == papyrus-tools-main",
+          "group": "navigation@1",
+          "icon": "$(settings)"
+        },
+        {
+          "command": "papyrusTools.openWorkspaceSettingsJson",
+          "when": "view == papyrus-tools-main",
+          "group": "navigation@2",
+          "icon": "$(json)"
+        },
+        {
+          "command": "papyrusTools.refreshProjectDirectory",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "navigation@1",
+          "icon": "$(refresh)"
+        },
+        {
+          "command": "papyrusTools.refreshOutputDirectory",
+          "when": "view == papyrus-tools-output-folder",
+          "group": "navigation@1",
+          "icon": "$(refresh)"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "papyrusTools.openControlCenter",
+          "when": "view == papyrus-tools-main",
+          "group": "9_configuration@1"
+        },
+        {
+          "command": "papyrusTools.refreshProjectDirectory",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "inline"
+        },
+        {
+          "command": "papyrusTools.refreshOutputDirectory",
+          "when": "view == papyrus-tools-output-folder",
+          "group": "inline"
+        },
+        {
+          "command": "papyrusTools.addFileToProject",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "papyrusTools.addFolderToProject",
+          "when": "view == papyrus-tools-project-folder",
+          "group": "7_modification@2"
         }
       ],
       "commandPalette": [
@@ -152,6 +236,10 @@
         },
         {
           "command": "papyrusTools.switchGame",
+          "when": "true"
+        },
+        {
+          "command": "papyrusTools.switchProject",
           "when": "true"
         },
         {
@@ -205,10 +293,17 @@
     "views": {
       "papyrusTools": [
         {
-          "id": "papyrusCommandsView",
-          "name": "Open Control Center",
-          "icon": "Assets/Images/PapyrusTools.svg",
-          "contextualTitle": "Papyrus Control Center"
+          "id": "papyrus-tools-main",
+          "name": "Main",
+          "type": "webview"
+        },
+        {
+          "id": "papyrus-tools-project-folder",
+          "name": "Project Folder"
+        },
+        {
+          "id": "papyrus-tools-output-folder",
+          "name": "Output Folder"
         }
       ]
     },
@@ -285,6 +380,11 @@
                   "type": "string",
                   "description": "Absolute namespace directory associated with the project.",
                   "markdownDescription": "Absolute namespace directory associated with the project."
+                },
+                "active": {
+                  "type": "boolean",
+                  "description": "Indicates if this project is currently active.",
+                  "markdownDescription": "Indicates if this project is currently active."
                 }
               },
               "additionalProperties": false
@@ -430,6 +530,8 @@
   },
   "dependencies": {
     "@fluentui/react-components": "^9.57.1",
+    "@fluentui/react-icons": "^2.0.312",
+    "@modelcontextprotocol/sdk": "^0.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

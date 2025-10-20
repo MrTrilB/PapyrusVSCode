@@ -1,0 +1,25 @@
+{
+    "typescript.preferences.includePackageJsonAutoImports": "auto",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "files.exclude": {
+        "out": false,
+        "node_modules": false,
+        "*.vsix": true
+    },
+    "search.exclude": {
+        "out": true,
+        "node_modules": true,
+        "*.vsix": true
+    },
+    "typescript.preferences.quoteStyle": "single",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "files.associations": {
+        "*.psc": "papyrus"
+    },
+    "papyrus.defaultGame": "Starfield"
+}

@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Extension (Isolated - No Other Extensions)",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--disable-extensions"
+            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
+            "preLaunchTask": "npm: webpack-dev"
+        },
+        {
+            "name": "Extension Tests",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+            ],
+            "outFiles": ["${workspaceFolder}/out/test/**/*.js"],
+            "preLaunchTask": "npm: test-compile"
+        },
+        {
+            "name": "Attach to Extension Host",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "restart": true,
+            "outFiles": ["${workspaceFolder}/out/**/*.js"]
+        }
+    ]
+}

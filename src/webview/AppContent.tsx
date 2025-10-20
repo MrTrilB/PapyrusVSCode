@@ -31,12 +31,12 @@ import {
   shorthands,
   tokens
 } from '@fluentui/react-components';
-import { Add20Regular, ArrowExport20Regular, ArrowImport20Regular, ArrowSync20Regular, CheckmarkCircle20Regular, Clock20Regular, Delete20Regular, Folder20Regular, Info20Regular, Link20Regular, Open16Regular, Search20Regular, Search24Regular, Settings20Regular, Target20Regular, Warning20Regular } from '@fluentui/react-icons';
+import { Add20Regular, ArrowExport20Regular, ArrowImport20Regular, ArrowSync20Regular, CheckmarkCircle20Regular, Clock20Regular, Delete20Regular, Folder20Regular, Info20Regular, Link20Regular, Open16Regular, Search20Regular, Search24Regular, Settings20Regular, Target20Regular, Warning20Regular, Play20Regular, Stop20Regular } from '@fluentui/react-icons';
 import type { CheckboxOnChangeData, SelectOnChangeData } from '@fluentui/react-components';
 import { getPapyrusTheme, PapyrusThemeMode } from './PapyrusFluentUITheme';
 import logoSvg from './images/Papyrus Tools - Logo Colour.svg';
 
-type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'compiler' | 'debugging' | 'projects';
+type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'compiler' | 'debugging' | 'commands' | 'projects' | 'mcpServer';
 
 declare global {
   interface Window {
@@ -52,9 +52,9 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground2
   },
   sidebar: {
-    width: '240px',
-    flex: '0 0 240px',
-    minWidth: '240px',
+    width: '180px',
+    flex: '0 0 180px',
+    minWidth: '180px',
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
@@ -209,7 +209,7 @@ const useStyles = makeStyles({
     textAlign: 'center'
   },
   brandImage: {
-    width: '120px',
+    width: '140px',
     height: 'auto'
   },
   brandTitle: {
@@ -347,6 +347,29 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground3,
     display: 'block'
+  },
+  successView: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXL,
+    textAlign: 'center',
+    padding: tokens.spacingVerticalXXL
+  },
+  successIcon: {
+    fontSize: tokens.fontSizeHero800,
+    color: tokens.colorStatusSuccessForeground1,
+    justifySelf: 'center'
+  },
+  successTitle: {
+    marginTop: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXS
+  },
+  successMessage: {
+    marginBottom: tokens.spacingVerticalXXL
+  },
+  buttonRowCentered: {
+    display: 'flex',
+    columnGap: tokens.spacingHorizontalM,
+    justifyContent: 'center'
   }
 });
 
@@ -369,13 +392,21 @@ type OverviewProject = {
   game?: GameKey;
 };
 
+type FolderPaths = {
+  namespaceDir: string;
+  outputDir: string;
+  rootPath?: string;
+  namespaceFragmentsDir?: string;
+  outputFragmentsDir?: string;
+};
+
 type ActiveProjectSummary = {
   name: string;
   namespaceDir: string;
   outputDir: string;
   namespaceFragmentsDir: string;
   outputFragmentsDir: string;
-  game?: GameKey;
+  game: GameKey | undefined;
 };
 
 type ProjectsOverviewProps = {
@@ -390,15 +421,17 @@ const OverviewContent: React.FC<OverviewContentProps> = ({ wizardCompleted, onNa
   const summaryContent = (
     <div>
       <div>
-        <Text weight="semibold" size={500}>Welcome to Papyrus Control Centre</Text>
+        <Text weight="semibold" size={500}>Welcome to Papyrus Tools Control Centre</Text>
+        <br />
         <Text size={300}>
-          Use the navigation to configure your mod workspace, compiler preferences, and diagnostic tooling using our GUI.
+          Use the navigation to configure your mod project, compiler preferences, and diagnostic tooling using our GUI.
         </Text>
       </div>
       <Divider className={styles.dividerSpacing} />
       <div className={styles.sectionGridWithMargin}>
         <div>
           <Text weight="semibold">Quick Actions</Text>
+          <br />
           <Text size={200} className={styles.mutedText}>Jump straight into common automation helpers.</Text>
         </div>
         <div className={styles.quickActionRow}>
@@ -674,7 +707,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ projects, onNavigat
             <>
               <Text size={300} weight="semibold">No projects yet</Text>
               <Text size={200} className={styles.mutedText}>
-                Create a workspace project to quickly switch between mod configurations.
+                Create a project to quickly switch between mod configurations.
               </Text>
               <Button appearance="secondary" onClick={onNavigateWorkspace}>Create Project</Button>
             </>
@@ -682,7 +715,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ projects, onNavigat
         </div>
       ) : (
         <div className={styles.projectsTableWrapper}>
-          <Table className={styles.projectsTable} aria-label="Workspace projects">
+          <Table className={styles.projectsTable} aria-label="Projects">
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Project</TableHeaderCell>
@@ -690,6 +723,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ projects, onNavigat
                 <TableHeaderCell>Source Namespace</TableHeaderCell>
                 <TableHeaderCell>Compiled Output</TableHeaderCell>
                 <TableHeaderCell>Fragments</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
@@ -722,6 +756,13 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ projects, onNavigat
                       </div>
                     ) : (
                       <Text size={200} className={styles.mutedText}>Not configured</Text>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activeProject && project.name === activeProject.name && project.namespace === activeProject.namespaceDir ? (
+                      <Text size={200} className={styles.statusPositive}>Active</Text>
+                    ) : (
+                      <Text size={200} className={styles.mutedText}>Inactive</Text>
                     )}
                   </TableCell>
                   <TableCell>
@@ -1530,6 +1571,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
         </div>
         <div>
           <Text weight="semibold">Auto-Discover Game Installations</Text>
+          <br />
           <Text size={200} className={styles.mutedText}>
             Scan known library folders for Creation Kit tools and apply the defaults automatically.
           </Text>
@@ -1553,6 +1595,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                     <MessageBarTitle>
                       <span>{label}: {root || 'Defaults Applied'}</span>
                     </MessageBarTitle>
+                    <br />
                     <Text size={200}>Defaults saved to settings.</Text>
                   </MessageBarBody>
                 </MessageBar>
@@ -1564,6 +1607,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                   <MessageBarTitle>
                     <span>{label}: {root || 'Not Detected'}</span>
                   </MessageBarTitle>
+                  <br />
                   <Text size={200}>
                     Run auto-detect again or configure the paths manually in the next step. View current settings{' '}
                     <Link onClick={() => window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrusTools.openSettings', payload: { query: '@ext:MrTrilB.papyrus-tools papyrusTools.games' } })}>here</Link>.
@@ -1596,6 +1640,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
     <div className={styles.sectionGrid}>
       <div>
         <Text weight="semibold">Creation Kit Roots</Text>
+        <br />
         <Text size={200} className={styles.mutedText}>
           Verify or provide the installation directory for each game. We derive compiler paths and script folders automatically.
         </Text>
@@ -1639,7 +1684,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                 />
               </Field>
               <div>
-                <Text size={200} className={styles.mutedText}>Script directories:</Text>
+                <Text size={300} weight='semibold' className={styles.mutedText}>Script directories:</Text>
                 <div className={styles.sectionGridTight}>
                   {state.scriptPaths.length ? (
                     state.scriptPaths.map(pathValue => (
@@ -1665,6 +1710,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
     <div className={styles.sectionGrid}>
       <div>
         <Text weight="semibold">Namespace & Output Paths</Text>
+        <br />
         <Text size={200} className={styles.mutedText}>
           Configure where your source scripts live and where compiled scripts should be emitted for each game.
         </Text>
@@ -1704,7 +1750,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                 />
               </Field>
               <div className={styles.sectionGridTight}>
-                <Text size={200} className={styles.summaryValue}>Namespace path: {namespaceDisplay}</Text>
+                <Text size={200} weight='semibold' className={styles.summaryValue}>Namespace path: {namespaceDisplay}</Text>
                 {hasRoot && namespaceResolved ? (
                   <div className={styles.statusRow}>
                     {namespaceStatus === null ? (
@@ -1718,8 +1764,8 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                       {namespaceStatus === null
                         ? 'Checking namespace folder...'
                         : namespaceStatus
-                          ? 'Namespace folder already exists.'
-                          : 'Namespace folder is missing; enable creation to scaffold it during save.'}
+                          ? `Namespace folder already exists: ${namespaceResolved}`
+                          : `Namespace folder is missing: ${namespaceResolved}; enable creation to scaffold it during save.`}
                     </Text>
                   </div>
                 ) : hasRoot ? (
@@ -1739,14 +1785,13 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
                       {outputStatus === null
                         ? 'Checking output folder...'
                         : outputStatus
-                          ? 'Output folder already exists.'
-                          : 'Output folder is missing; enable creation to scaffold it during save.'}
+                          ? `Output folder already exists: ${outputResolved}`
+                          : `Output folder is missing: ${outputResolved}; enable creation to scaffold it during save.`}
                     </Text>
                   </div>
                 ) : hasRoot ? (
                   <Text size={200} className={styles.mutedText}>Output path will follow the namespace folder when provided.</Text>
                 ) : null}
-                <Text size={200} className={styles.mutedText}>Fragments can be configured per project after finishing the wizard.</Text>
               </div>
               <div className={styles.flexRowWrap}>
                 {showNamespaceCreate && (
@@ -1794,8 +1839,9 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
     <div className={styles.sectionGrid}>
       <div>
         <Text weight="semibold">Review & Save</Text>
+        <br />
         <Text size={200} className={styles.mutedText}>
-          Confirm the detected and manual values, then persist them to Papyrus workspace settings.
+          Confirm the detected and manual values, then persist them to Papyrus user settings.
         </Text>
       </div>
       <div className={styles.summaryGrid}>
@@ -1861,7 +1907,7 @@ const SetupWizardContent: React.FC<SetupWizardContentProps> = ({ onNavigate, onC
           <MessageBarBody>
             <MessageBarTitle>Settings saved</MessageBarTitle>
             <Text size={200}>
-              {saveFeedback.message || 'Papyrus workspace settings updated successfully.'}
+              {saveFeedback.message || 'Papyrus user settings updated successfully.'}
             </Text>
           </MessageBarBody>
         </MessageBar>
@@ -1962,26 +2008,27 @@ type WorkspaceProject = {
 
 type WorkspaceContentProps = {
   activeProject?: ActiveProjectSummary;
+  onNavigate?: (section: SectionKey) => void;
 };
 
-const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) => {
+const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject, onNavigate }) => {
   const styles = useStyles();
-  const [gameProfile, setGameProfile] = React.useState<GameKey>(() => activeProject?.game ?? 'starfield');
-  const [projectName, setProjectName] = React.useState(() => activeProject ? sanitizeNamespaceFolder(activeProject.name) : '');
+  const [gameProfile, setGameProfile] = React.useState<GameKey>('starfield');
+  const [projectName, setProjectName] = React.useState('');
   const [namespaceFolder, setNamespaceFolder] = React.useState('');
-  const [useFragments, setUseFragments] = React.useState(() => !!(activeProject?.namespaceFragmentsDir || activeProject?.outputFragmentsDir));
+  const [useFragments, setUseFragments] = React.useState(false);
   const [namespaceStatus, setNamespaceStatus] = React.useState<boolean | null>(null);
   const [outputStatus, setOutputStatus] = React.useState<boolean | null>(null);
   const [fragmentNamespaceStatus, setFragmentNamespaceStatus] = React.useState<boolean | null>(null);
   const [fragmentOutputStatus, setFragmentOutputStatus] = React.useState<boolean | null>(null);
-  const [fragmentNamespacePath, setFragmentNamespacePath] = React.useState(activeProject?.namespaceFragmentsDir ?? '');
-  const [fragmentOutputPath, setFragmentOutputPath] = React.useState(activeProject?.outputFragmentsDir ?? '');
+  const [fragmentNamespacePath, setFragmentNamespacePath] = React.useState('');
+  const [fragmentOutputPath, setFragmentOutputPath] = React.useState('');
   const [fragmentNamespaceDirty, setFragmentNamespaceDirty] = React.useState(false);
   const [fragmentOutputDirty, setFragmentOutputDirty] = React.useState(false);
   const [existingProjects, setExistingProjects] = React.useState<WorkspaceProject[]>([]);
   const [saveState, setSaveState] = React.useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = React.useState('');
-  const [showProjectWizard, setShowProjectWizard] = React.useState(!activeProject);
+  const [showSuccessView, setShowSuccessView] = React.useState(false);
   const pathRequestTypeRef = React.useRef<Map<string, 'primary' | 'fragments'>>(new Map());
   const prevActiveProjectKeyRef = React.useRef<string>('');
 
@@ -1994,17 +2041,17 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
   }, []);
 
   type FolderState = {
-    root: string;
+    rootPath?: string;
     namespaceDir: string;
-    namespaceFragmentsDir: string;
+    namespaceFragmentsDir?: string;
     outputDir: string;
-    outputFragmentsDir: string;
+    outputFragmentsDir?: string;
   };
 
   const [folderState, setFolderState] = React.useState<Record<GameKey, FolderState>>({
-    starfield: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
-    fallout: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
-    skyrim: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' }
+    starfield: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
+    fallout: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
+    skyrim: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' }
   });
 
   const requestProjectList = React.useCallback((namespaceDir: string) => {
@@ -2080,40 +2127,14 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
   React.useEffect(() => {
     if (!activeProject) {
       prevActiveProjectKeyRef.current = '';
-      setShowProjectWizard(true);
-      setProjectName('');
-      setNamespaceFolder('');
-      setUseFragments(false);
-      setFragmentNamespacePath('');
-      setFragmentOutputPath('');
-      setFragmentNamespaceDirty(false);
-      setFragmentOutputDirty(false);
-      setNamespaceStatus(null);
-      setOutputStatus(null);
-      setFragmentNamespaceStatus(null);
-      setFragmentOutputStatus(null);
       return;
     }
 
     const key = `${activeProject.game ?? 'any'}::${normalizeWindowsPath(activeProject.namespaceDir).toLowerCase()}`;
     if (prevActiveProjectKeyRef.current !== key) {
       prevActiveProjectKeyRef.current = key;
-      setShowProjectWizard(false);
-      setGameProfile(activeProject.game ?? 'starfield');
-      setProjectName(sanitizeNamespaceFolder(activeProject.name));
-      setNamespaceFolder(sanitizeNamespaceFolder(extractNamespaceFolder(activeProject.namespaceDir)));
-      const hasFragments = !!(activeProject.namespaceFragmentsDir || activeProject.outputFragmentsDir);
-      setUseFragments(hasFragments);
-      setFragmentNamespacePath(activeProject.namespaceFragmentsDir || '');
-      setFragmentOutputPath(activeProject.outputFragmentsDir || '');
-      setFragmentNamespaceDirty(false);
-      setFragmentOutputDirty(false);
-      setSaveState('idle');
-      setSaveMessage('');
-      setNamespaceStatus(null);
-      setOutputStatus(null);
-      setFragmentNamespaceStatus(null);
-      setFragmentOutputStatus(null);
+      // Note: We don't populate form fields from activeProject anymore
+      // This form is now always for creating new projects
     }
   }, [activeProject, extractNamespaceFolder]);
 
@@ -2125,15 +2146,15 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
       }
 
       if (data.type === 'papyrusTools.setupState' && data.payload) {
-        const rawPayload = data.payload as { games?: Record<string, any>; setupWizardCompleted?: boolean } | Record<string, any>;
+        const rawPayload = data.payload as { games?: Record<string, any>; folderPaths?: Record<GameKey, FolderState>; setupWizardCompleted?: boolean } | Record<string, any>;
         const gamesPayload = rawPayload && typeof (rawPayload as any).games === 'object' && !Array.isArray((rawPayload as any).games)
           ? (rawPayload as { games: Record<string, any> }).games
           : (rawPayload as Record<string, any>);
         const payload = gamesPayload;
         const next: Record<GameKey, FolderState> = {
-          starfield: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
-          fallout: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
-          skyrim: { root: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' }
+          starfield: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
+          fallout: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' },
+          skyrim: { rootPath: '', namespaceDir: '', namespaceFragmentsDir: '', outputDir: '', outputFragmentsDir: '' }
         };
         for (const key of Object.keys(payload) as GameKey[]) {
           const entry = payload[key];
@@ -2141,7 +2162,7 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
             continue;
           }
           next[key] = {
-            root: entry.rootPath ?? '',
+            rootPath: entry.rootPath ?? '',
             namespaceDir: entry.namespaceDir ?? '',
             namespaceFragmentsDir: entry.namespaceFragmentsDir ?? '',
             outputDir: entry.outputDir ?? '',
@@ -2149,6 +2170,9 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
           };
         }
         setFolderState(next);
+        if (rawPayload.folderPaths) {
+          setFolderState(rawPayload.folderPaths);
+        }
         const selected = next[gameProfile];
         requestProjectList(selected.namespaceDir);
         setFragmentNamespaceDirty(false);
@@ -2212,11 +2236,39 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
         if (data.status === 'success') {
           setSaveState('success');
           setSaveMessage('Workspace project saved.');
+          // Clear form fields and show success view
+          setProjectName('');
+          setNamespaceFolder('');
+          setUseFragments(false);
+          setFragmentNamespacePath('');
+          setFragmentOutputPath('');
+          setFragmentNamespaceDirty(false);
+          setFragmentOutputDirty(false);
+          setNamespaceStatus(null);
+          setOutputStatus(null);
+          setFragmentNamespaceStatus(null);
+          setFragmentOutputStatus(null);
+          setShowSuccessView(true);
           const selected = folderState[gameProfile];
           requestProjectList(selected.namespaceDir);
+          window.__papyrusVsCodeApi?.postMessage?.({ type: 'papyrusTools.requestSetupState' });
         } else {
           setSaveState('error');
           setSaveMessage(typeof data.message === 'string' ? data.message : 'Failed to save workspace project.');
+        }
+      }
+
+      if (data.type === 'papyrusTools.folderPaths') {
+        const payload = data.payload as { game: GameKey; paths: FolderPaths };
+        if (payload.game && payload.paths) {
+          setFolderState(prev => ({ ...prev, [payload.game]: payload.paths }));
+        }
+      }
+
+      if (data.type === 'papyrusTools.setupState' && data.payload && typeof data.payload === 'object') {
+        const payload = data.payload as { folderPaths?: Record<GameKey, FolderPaths> };
+        if (payload.folderPaths) {
+          setFolderState(payload.folderPaths);
         }
       }
     };
@@ -2243,72 +2295,6 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
     setSaveMessage('');
     pathRequestTypeRef.current.clear();
   };
-
-  const handleNamespaceChange = (_: unknown, data: { value: string }) => {
-    const sanitized = sanitizeNamespaceFolder(data.value);
-    setNamespaceFolder(sanitized);
-    setFragmentNamespaceDirty(false);
-    setFragmentOutputDirty(false);
-  };
-
-  if (!showProjectWizard && activeProject) {
-    const gameLabel = activeProject.game ? PROFILE_LABELS[activeProject.game] : 'Not assigned';
-    return (
-      <div className={styles.sectionGrid}>
-        <div>
-          <Text weight="semibold">Workspace Project Saved</Text>
-          <Text size={200} className={styles.mutedText}>
-            Saved data for {activeProject.namespaceDir} is ready to use.
-          </Text>
-        </div>
-        <div className={styles.summaryCard}>
-          <Text weight="semibold">{activeProject.name}</Text>
-          <div className={styles.summaryRow}>
-            <Text className={styles.summaryLabel}>Game</Text>
-            <Text className={styles.summaryValue}>{gameLabel}</Text>
-          </div>
-          <div className={styles.summaryRow}>
-            <Text className={styles.summaryLabel}>Source Namespace</Text>
-            <Text className={styles.summaryValue}>{activeProject.namespaceDir}</Text>
-          </div>
-          <div className={styles.summaryRow}>
-            <Text className={styles.summaryLabel}>Compiled Output</Text>
-            <Text className={styles.summaryValue}>{activeProject.outputDir || 'Not configured'}</Text>
-          </div>
-          <div className={styles.summaryRow}>
-            <Text className={styles.summaryLabel}>Fragment Namespace</Text>
-            <Text className={styles.summaryValue}>{activeProject.namespaceFragmentsDir || 'Not configured'}</Text>
-          </div>
-          <div className={styles.summaryRow}>
-            <Text className={styles.summaryLabel}>Fragment Output</Text>
-            <Text className={styles.summaryValue}>{activeProject.outputFragmentsDir || 'Not configured'}</Text>
-          </div>
-        </div>
-        <div className={styles.buttonRow}>
-          <Button
-            appearance="primary"
-            onClick={() => {
-              setShowProjectWizard(true);
-              setNamespaceStatus(null);
-              setOutputStatus(null);
-              setFragmentNamespaceStatus(null);
-              setFragmentOutputStatus(null);
-              setProjectName(sanitizeNamespaceFolder(activeProject.name));
-              setNamespaceFolder(sanitizeNamespaceFolder(extractNamespaceFolder(activeProject.namespaceDir)));
-              const hasFragments = !!(activeProject.namespaceFragmentsDir || activeProject.outputFragmentsDir);
-              setUseFragments(hasFragments);
-              setFragmentNamespacePath(activeProject.namespaceFragmentsDir || '');
-              setFragmentOutputPath(activeProject.outputFragmentsDir || '');
-              setFragmentNamespaceDirty(false);
-              setFragmentOutputDirty(false);
-            }}
-          >
-            Run Project Wizard Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const selectedFolders = folderState[gameProfile];
   const resolvedNamespaceDir = selectedFolders.namespaceDir && namespaceFolder
@@ -2464,6 +2450,13 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
   }, []);
 
   React.useEffect(() => {
+    window.__papyrusVsCodeApi?.postMessage?.({
+      type: 'papyrusTools.gameProfileChanged',
+      payload: { game: gameProfile }
+    });
+  }, [gameProfile]);
+
+  React.useEffect(() => {
     if (saveState !== 'idle' && saveState !== 'saving') {
       const timer = setTimeout(() => {
         setSaveState('idle');
@@ -2478,8 +2471,8 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
   const fragmentNamespaceExists = fragmentNamespaceStatus === true;
   const fragmentOutputExists = fragmentOutputStatus === true;
 
-  const namespaceDisplay = resolvedNamespaceDir || 'Namespace path unavailable. Run the setup wizard to configure it.';
-  const outputDisplay = resolvedOutputDir || 'Output path unavailable. Run the setup wizard to configure it.';
+  const namespaceDisplay = resolvedNamespaceDir || selectedFolders.namespaceDir || 'Namespace path unavailable. Run the setup wizard to configure it.';
+  const outputDisplay = resolvedOutputDir || selectedFolders.outputDir || 'Output path unavailable. Run the setup wizard to configure it.';
 
   const existingForGame = existingProjects.filter(entry => entry.game === gameProfile);
   const hasNamespaceBasePath = !!resolvedNamespaceDir;
@@ -2488,6 +2481,45 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
   const hasFragmentNamespacePath = !!fragmentNamespaceCheck;
   const hasFragmentOutputPath = !!fragmentOutputCheck;
   const showFragmentStatus = hasFragmentNamespacePath || hasFragmentOutputPath;
+
+  // Success view component
+  if (showSuccessView) {
+    return (
+      <div className={styles.sectionGrid}>
+        <div className={styles.successView}>
+          <CheckmarkCircle20Regular className={styles.successIcon} />
+          <Text weight="semibold" size={500} className={styles.successTitle}>
+            Project Created Successfully!
+          </Text>
+          <br />
+          <Text size={200} className={styles.mutedText + ' ' + styles.successMessage}>
+            Your workspace project has been saved and is ready to use.
+          </Text>
+          <br />
+          <div className={styles.buttonRowCentered}>
+            <Button
+              appearance="primary"
+              onClick={() => {
+                setShowSuccessView(false);
+                setSaveState('idle');
+                setSaveMessage('');
+              }}
+            >
+              Add New Project
+            </Button>
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                onNavigate?.('projects');
+              }}
+            >
+              View Projects
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.sectionGrid}>
@@ -2505,11 +2537,11 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
             <option value="skyrim">Skyrim SE / AE</option>
           </Select>
         </Field>
-        <Field label="Project Name" required hint="Used to reference this project when switching between workspaces.">
+        <Field label="Project Name" required hint="Used to reference this project when switching between projects.">
           <Input value={projectName} onChange={(_, data) => setProjectName(sanitizeNamespaceFolder(data.value))} placeholder="MyMod" />
         </Field>
         <Field label="Mod Namespace" required hint="Creates a folder under your configured namespace/output directories.">
-          <Input value={namespaceFolder} onChange={handleNamespaceChange} placeholder="ProjectFolder" />
+          <Input value={namespaceFolder} onChange={(_, data) => setNamespaceFolder(sanitizeNamespaceFolder(data.value))} placeholder="ProjectFolder" />
         </Field>
         <div>
           <div className={styles.cardHeaderIcon}>
@@ -2518,42 +2550,34 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
           </div>
           <div className={styles.summaryRow}>
             <Text weight="semibold" size={200} className={styles.summaryLabel}>Source namespace</Text>
-            <Text size={200} className={styles.summaryValue}>{namespaceDisplay}</Text>
+            {namespaceFolder && showPrimaryStatus && hasNamespaceBasePath ? (
+              <div className={styles.statusRow}>
+                {namespaceStatus === null ? <Spinner size="tiny" /> : namespaceExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
+                <Text size={200} className={styles.summaryValue}>
+                  {namespaceStatus === null && 'Checking namespace folder...'}
+                  {namespaceExists && `Namespace folder exists: ${resolvedNamespaceDir}`}
+                  {namespaceStatus === false && `Namespace folder missing: ${resolvedNamespaceDir}; it will be created when you save this project.`}
+                </Text>
+              </div>
+            ) : (
+              <Text size={200} className={styles.summaryValue}>{namespaceDisplay}</Text>
+            )}
           </div>
           <div className={styles.summaryRow}>
             <Text weight="semibold" size={200} className={styles.summaryLabel}>Compiled output</Text>
-            <Text size={200} className={styles.summaryValue}>{outputDisplay}</Text>
-          </div>
-          {namespaceFolder && (
-            showPrimaryStatus ? (
-              <div className={styles.sectionGridTight}>
-                {hasNamespaceBasePath && (
-                  <div className={styles.statusRow}>
-                    {namespaceStatus === null ? <Spinner size="tiny" /> : namespaceExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
-                    <Text size={200} className={styles.mutedText}>
-                      {namespaceStatus === null && 'Checking namespace folder...'}
-                      {namespaceExists && 'Namespace folder exists.'}
-                      {namespaceStatus === false && 'Namespace folder missing; it will be created when you save this project.'}
-                    </Text>
-                  </div>
-                )}
-                {hasOutputBasePath && (
-                  <div className={styles.statusRow}>
-                    {outputStatus === null ? <Spinner size="tiny" /> : outputExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
-                    <Text size={200} className={styles.mutedText}>
-                      {outputStatus === null && 'Checking output folder...'}
-                      {outputExists && 'Output folder exists.'}
-                      {outputStatus === false && 'Output folder missing; it will be created when you save this project.'}
-                    </Text>
-                  </div>
-                )}
+            {namespaceFolder && showPrimaryStatus && hasOutputBasePath ? (
+              <div className={styles.statusRow}>
+                {outputStatus === null ? <Spinner size="tiny" /> : outputExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
+                <Text size={200} className={styles.summaryValue}>
+                  {outputStatus === null && 'Checking output folder...'}
+                  {outputExists && `Output folder exists: ${resolvedOutputDir}`}
+                  {outputStatus === false && `Output folder missing: ${resolvedOutputDir}; it will be created when you save this project.`}
+                </Text>
               </div>
             ) : (
-              <Text size={200} className={styles.mutedText}>
-                Configure namespace and output folders in the setup wizard to enable status checks for these paths.
-              </Text>
-            )
-          )}
+              <Text size={200} className={styles.summaryValue}>{outputDisplay}</Text>
+            )}
+          </div>
         </div>
         <Checkbox
           label="(Optional) This project requires script fragments"
@@ -2572,6 +2596,16 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
                 }}
                 placeholder="C:/Game/Data/Scripts/Source/Fragments/Quests"
               />
+              {showFragmentStatus && hasFragmentNamespacePath && (
+                <div className={styles.statusRow}>
+                  {fragmentNamespaceStatus === null ? <Spinner size="tiny" /> : fragmentNamespaceExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
+                  <Text size={200} className={styles.mutedText}>
+                    {fragmentNamespaceStatus === null && 'Checking fragment namespace folder...'}
+                    {fragmentNamespaceExists && `Fragment namespace folder exists: ${fragmentNamespaceCheck}`}
+                    {fragmentNamespaceStatus === false && `Fragment namespace folder missing: ${fragmentNamespaceCheck}; it will be created when you save this project.`}
+                  </Text>
+                </div>
+              )}
             </Field>
             <Field label="Fragment Output Path" hint="Full path where compiled fragment scripts should be emitted.">
               <Input
@@ -2583,31 +2617,18 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
                 }}
                 placeholder="C:/Game/Data/Scripts/Fragments/Quests"
               />
+              {showFragmentStatus && hasFragmentOutputPath && (
+                <div className={styles.statusRow}>
+                  {fragmentOutputStatus === null ? <Spinner size="tiny" /> : fragmentOutputExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
+                  <Text size={200} className={styles.mutedText}>
+                    {fragmentOutputStatus === null && 'Checking fragment output folder...'}
+                    {fragmentOutputExists && `Fragment output folder exists: ${fragmentOutputCheck}`}
+                    {fragmentOutputStatus === false && `Fragment output folder missing: ${fragmentOutputCheck}; it will be created when you save this project.`}
+                  </Text>
+                </div>
+              )}
             </Field>
-            {showFragmentStatus ? (
-              <div className={styles.sectionGridTight}>
-                {hasFragmentNamespacePath && (
-                  <div className={styles.statusRow}>
-                    {fragmentNamespaceStatus === null ? <Spinner size="tiny" /> : fragmentNamespaceExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
-                    <Text size={200} className={styles.mutedText}>
-                      {fragmentNamespaceStatus === null && 'Checking fragment namespace folder...'}
-                      {fragmentNamespaceExists && 'Fragment namespace folder exists.'}
-                      {fragmentNamespaceStatus === false && 'Fragment namespace folder missing; it will be created when you save this project.'}
-                    </Text>
-                  </div>
-                )}
-                {hasFragmentOutputPath && (
-                  <div className={styles.statusRow}>
-                    {fragmentOutputStatus === null ? <Spinner size="tiny" /> : fragmentOutputExists ? <CheckmarkCircle20Regular className={styles.statusIconPositive} /> : <Warning20Regular className={styles.statusIconWarning} />}
-                    <Text size={200} className={styles.mutedText}>
-                      {fragmentOutputStatus === null && 'Checking fragment output folder...'}
-                      {fragmentOutputExists && 'Fragment output folder exists.'}
-                      {fragmentOutputStatus === false && 'Fragment output folder missing; it will be created when you save this project.'}
-                    </Text>
-                  </div>
-                )}
-              </div>
-            ) : (
+            {!showFragmentStatus && (
               <Text size={200} className={styles.mutedText}>
                 Provide fragment namespace and output paths to enable status checks for these folders.
               </Text>
@@ -2631,9 +2652,9 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
         <MessageBar intent={saveState === 'success' ? 'success' : saveState === 'saving' ? 'warning' : 'error'}>
           <MessageBarBody>
             <MessageBarTitle>
-              {saveState === 'saving' && 'Saving workspace project...'}
-              {saveState === 'success' && 'Workspace project saved'}
-              {saveState === 'error' && 'Failed to save workspace project'}
+              {saveState === 'saving' && 'Saving project...'}
+              {saveState === 'success' && 'Project saved'}
+              {saveState === 'error' && 'Failed to save project'}
             </MessageBarTitle>
             <Text size={200} block>{saveMessage}</Text>
           </MessageBarBody>
@@ -2657,7 +2678,7 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject }) =>
           Reset
         </Button>
         <Button appearance="primary" onClick={handleSaveProject} disabled={saveState === 'saving'}>
-          {saveState === 'saving' ? 'Saving…' : 'Save Workspace Project'}
+          {saveState === 'saving' ? 'Saving…' : 'Save Project'}
         </Button>
       </div>
     </div>
@@ -2747,7 +2768,7 @@ const DebuggingContent: React.FC = () => {
     setAutoDetectStatus('detecting');
     setAutoDetectMessage('Auto-detecting game paths...');
     window.__papyrusVsCodeApi.postMessage({
-      type: 'papyrus.autoDetect',
+      type: 'papyrusTools.autoDetect',
       payload: { applyAll: true }
     });
   }, []);
@@ -2844,6 +2865,7 @@ const DebuggingContent: React.FC = () => {
     <div className={styles.sectionGrid}>
       <div>
         <Text weight="semibold">Debugging & Diagnostics</Text>
+        <br />
         <Text size={200} className={styles.mutedText}>
           Comprehensive tools for troubleshooting Papyrus script issues, managing configurations, and maintaining project health.
         </Text>
@@ -2859,7 +2881,12 @@ const DebuggingContent: React.FC = () => {
           <div className={styles.statusItem}>
             <Text size={200} className={styles.statusLabel}>Diagnostics</Text>
             <div className={styles.statusRow}>
-              {diagnosticCount !== null ? (
+              {scanStatus === 'scanning' ? (
+                <>
+                  <Spinner size="tiny" />
+                  <Text size={200} className={styles.mutedText}>Scanning...</Text>
+                </>
+              ) : diagnosticCount !== null ? (
                 <>
                   <Warning20Regular className={diagnosticCount > 0 ? styles.statusIconWarning : styles.statusIconPositive} />
                   <Text size={200} className={styles.mutedText}>
@@ -2868,8 +2895,8 @@ const DebuggingContent: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Spinner size="tiny" />
-                  <Text size={200} className={styles.mutedText}>Unknown</Text>
+                  <Info20Regular />
+                  <Text size={200} className={styles.mutedText}>Not scanned</Text>
                 </>
               )}
             </div>
@@ -3038,6 +3065,352 @@ const DebuggingContent: React.FC = () => {
   );
 };
 
+const CommandsContent: React.FC = () => {
+  const styles = useStyles();
+
+  const commands = [
+    { id: 'papyrusTools.compileFile', title: 'Compile Current File', description: 'Compile the currently active Papyrus script file.' },
+    { id: 'papyrusTools.switchGame', title: 'Switch Game Profile', description: 'Change the active game profile (Starfield, Fallout 4, Skyrim).' },
+    { id: 'papyrusTools.configureCompilers', title: 'Configure Compiler Paths', description: 'Set up paths to Papyrus compiler executables for each game.' },
+    { id: 'papyrusTools.configureScriptFolders', title: 'Configure Script Folders', description: 'Configure source script directories for each game.' },
+    { id: 'papyrusTools.rebuildIndex', title: 'Rebuild Script Index', description: 'Rebuild the internal script index for cross-script references.' },
+    { id: 'papyrusTools.addScriptFolder', title: 'Add Script Folder', description: 'Add a new script folder to the current game configuration.' },
+    { id: 'papyrusTools.setupWorkspaceProfile', title: 'Setup Project Profile', description: 'Configure project-specific settings and project metadata.' },
+    { id: 'papyrusTools.autoDetectGamePaths', title: 'Auto-Detect Game Paths', description: 'Automatically detect and configure game installations from Steam libraries.' },
+    { id: 'papyrusTools.scanScriptsForDiagnostics', title: 'Scan Scripts for Diagnostics', description: 'Scan all scripts in the workspace for syntax and logic errors.' },
+    { id: 'papyrusTools.openCurrentGameSettings', title: 'Open Current Game Settings', description: 'Open VS Code settings filtered to current game configuration.' },
+    { id: 'papyrusTools.openWorkspaceSettingsJson', title: 'Open Workspace Settings (JSON)', description: 'Open the workspace settings.json file for manual editing.' },
+    { id: 'papyrusTools.exportCurrentProfile', title: 'Export Current Game Profile', description: 'Export current game configuration as a shareable profile.' },
+    { id: 'papyrusTools.importProfile', title: 'Import Game Profile', description: 'Import a previously exported game configuration profile.' },
+    { id: 'papyrusTools.createDefaultProfiles', title: 'Create Default Game Profiles', description: 'Create default configuration profiles for all supported games.' },
+    { id: 'papyrusTools.clearStoredSettings', title: 'Clear Stored Settings', description: 'Clear all stored Papyrus Tools settings and reset to defaults.' },
+    { id: 'papyrusTools.openControlCenter', title: 'Open Control Center', description: 'Open the Papyrus Control Center webview panel.' }
+  ];
+
+  const handleExecuteCommand = React.useCallback((commandId: string) => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.executeCommand',
+      payload: { commandId }
+    });
+  }, []);
+
+  return (
+    <div className={styles.sectionGrid}>
+      <div>
+        <Text weight="semibold">Papyrus Tools Commands</Text>
+        <br />
+        <Text size={200} className={styles.mutedText}>
+          Complete reference of all available Papyrus Tools commands with descriptions and direct execution.
+        </Text>
+      </div>
+
+      <div className={styles.sectionGridTight}>
+        {commands.map(command => (
+          <div key={command.id} className={styles.summaryCard}>
+            <div className={styles.summaryRow}>
+              <Text className={styles.summaryLabel}>{command.title}</Text>
+              <Button
+                appearance="outline"
+                size="small"
+                onClick={() => handleExecuteCommand(command.id)}
+              >
+                Execute
+              </Button>
+            </div>
+            <Text size={200} className={styles.mutedText}>
+              {command.description}
+            </Text>
+            <Text size={200} className={styles.mutedText} style={{ fontFamily: 'monospace', marginTop: '4px' }}>
+              {command.id}
+            </Text>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const McpServerContent: React.FC = () => {
+  const styles = useStyles();
+  const [serverMessage, setServerMessage] = React.useState('');
+  const [serverStatus, setServerStatus] = React.useState<'running' | 'stopped' | 'starting' | 'stopping'>('running');
+
+  const mcpTools = [
+    {
+      name: 'compile_file',
+      description: 'Compile a Papyrus script file',
+      parameters: 'filePath: string (path to the .psc file to compile)'
+    },
+    {
+      name: 'switch_game',
+      description: 'Switch the active game profile',
+      parameters: 'game: "starfield" | "fallout" | "skyrim"'
+    },
+    {
+      name: 'get_game_config',
+      description: 'Get current game configuration settings',
+      parameters: 'none'
+    },
+    {
+      name: 'rebuild_index',
+      description: 'Rebuild the script index for cross-references',
+      parameters: 'none'
+    },
+    {
+      name: 'scan_diagnostics',
+      description: 'Scan scripts for diagnostics and errors',
+      parameters: 'none'
+    },
+    {
+      name: 'get_help',
+      description: 'Get help information about Papyrus scripting',
+      parameters: 'topic?: string (optional help topic)'
+    },
+    {
+      name: 'generate_code',
+      description: 'Generate Papyrus code snippets',
+      parameters: 'type: string, context?: string'
+    }
+  ];
+
+  const handleTestTool = React.useCallback((toolName: string) => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    // For now, just show that the tool would be called
+    setServerMessage(`Tool "${toolName}" would be executed via MCP protocol`);
+    setTimeout(() => setServerMessage(''), 3000);
+  }, []);
+
+  const handleStartServer = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    setServerStatus('starting');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.startMcpServer'
+    });
+  }, []);
+
+  const handleStopServer = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    setServerStatus('stopping');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.stopMcpServer'
+    });
+  }, []);
+
+  const handleRestartServer = React.useCallback(() => {
+    if (!window.__papyrusVsCodeApi?.postMessage) {
+      return;
+    }
+    setServerStatus('stopping');
+    window.__papyrusVsCodeApi.postMessage({
+      type: 'papyrusTools.restartMcpServer'
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const listener = (event: MessageEvent<any>) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+      if (data.command === 'mcpServerStatusUpdate') {
+        const status = data.status;
+        if (status === 'running' || status === 'stopped' || status === 'starting' || status === 'stopping') {
+          setServerStatus(status);
+        }
+      }
+      if (data.type === 'papyrusTools.mcpServerControlResult') {
+        const { command, status, message } = data;
+        if (status === 'error' && message) {
+          setServerMessage(`Error ${command === 'start' ? 'starting' : command === 'stop' ? 'stopping' : 'restarting'} server: ${message}`);
+          setTimeout(() => setServerMessage(''), 5000);
+        } else if (status === 'success') {
+          setServerMessage(`Server ${command === 'start' ? 'started' : command === 'stop' ? 'stopped' : 'restarted'} successfully`);
+          setTimeout(() => setServerMessage(''), 3000);
+        }
+      }
+    };
+
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, []);
+
+  return (
+    <div className={styles.sectionGrid}>
+      <div>
+        <Text weight="semibold">MCP Server Status</Text>
+        <br />
+        <Text size={200} className={styles.mutedText}>
+          Model Context Protocol server integration for GitHub Copilot Chat. Access Papyrus Tools functionality directly through chat commands.
+        </Text>
+      </div>
+
+      {/* Server Status */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Info20Regular />
+          <Text weight="semibold">Server Information</Text>
+        </div>
+        <div className={styles.statusGrid}>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Status</Text>
+            <div className={styles.statusRow}>
+              {serverStatus === 'running' && <CheckmarkCircle20Regular className={styles.statusIconPositive} />}
+              {serverStatus === 'stopped' && <Stop20Regular className={styles.statusIconWarning} />}
+              {(serverStatus === 'starting' || serverStatus === 'stopping') && <Spinner size="tiny" />}
+              <Text size={200} className={styles.mutedText}>
+                {serverStatus === 'running' && 'Running'}
+                {serverStatus === 'stopped' && 'Stopped'}
+                {serverStatus === 'starting' && 'Starting...'}
+                {serverStatus === 'stopping' && 'Stopping...'}
+              </Text>
+            </div>
+          </div>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Tools Available</Text>
+            <div className={styles.statusRow}>
+              <CheckmarkCircle20Regular className={styles.statusIconPositive} />
+              <Text size={200} className={styles.mutedText}>
+                {mcpTools.length} tools registered
+              </Text>
+            </div>
+          </div>
+          <div className={styles.statusItem}>
+            <Text size={200} className={styles.statusLabel}>Protocol</Text>
+            <div className={styles.statusRow}>
+              <Info20Regular />
+              <Text size={200} className={styles.mutedText}>
+                MCP v1.0 (stdio)
+              </Text>
+            </div>
+          </div>
+        </div>
+        {serverMessage && (
+          <MessageBar intent="info">
+            <MessageBarBody>
+              <MessageBarTitle>Tool Test</MessageBarTitle>
+              <Text size={200}>{serverMessage}</Text>
+            </MessageBarBody>
+          </MessageBar>
+        )}
+      </div>
+
+      {/* Server Controls */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Settings20Regular />
+          <Text weight="semibold">Server Controls</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          Start, stop, or restart the MCP server to control GitHub Copilot Chat integration.
+        </Text>
+        <div className={styles.buttonRow}>
+          {serverStatus === 'stopped' && (
+            <Button
+              appearance="primary"
+              onClick={handleStartServer}
+              icon={<Play20Regular />}
+            >
+              Start Server
+            </Button>
+          )}
+          {serverStatus === 'running' && (
+            <Button
+              appearance="secondary"
+              onClick={handleStopServer}
+              icon={<Stop20Regular />}
+            >
+              Stop Server
+            </Button>
+          )}
+          <Button
+            appearance="outline"
+            onClick={handleRestartServer}
+            icon={<ArrowSync20Regular />}
+            disabled={serverStatus === 'starting' || serverStatus === 'stopping'}
+          >
+            {serverStatus === 'starting' || serverStatus === 'stopping' ? 'Restarting...' : 'Restart Server'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Available Tools */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Settings20Regular />
+          <Text weight="semibold">Available Tools</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          These tools are available in GitHub Copilot Chat when the MCP server is active. Use them with commands like "/compile_file" or "/switch_game".
+        </Text>
+        <div className={styles.sectionGridTight}>
+          {mcpTools.map(tool => (
+            <div key={tool.name} className={styles.summaryCard}>
+              <div className={styles.summaryRow}>
+                <Text className={styles.summaryLabel}>{tool.name}</Text>
+                <Button
+                  appearance="outline"
+                  size="small"
+                  onClick={() => handleTestTool(tool.name)}
+                >
+                  Test
+                </Button>
+              </div>
+              <Text size={200} className={styles.mutedText}>
+                {tool.description}
+              </Text>
+              <Text size={200} className={styles.mutedText} style={{ fontFamily: 'monospace', marginTop: '4px' }}>
+                Parameters: {tool.parameters}
+              </Text>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Usage Instructions */}
+      <div className={styles.sectionGridTight}>
+        <div className={styles.cardHeaderIcon}>
+          <Info20Regular />
+          <Text weight="semibold">How to Use</Text>
+        </div>
+        <Text size={200} className={styles.mutedText}>
+          Once the MCP server is running, you can access Papyrus Tools functionality directly in GitHub Copilot Chat:
+        </Text>
+        <div className={styles.sectionGridTight}>
+          <div className={styles.summaryCard}>
+            <Text weight="semibold">Chat Commands</Text>
+            <Text size={200} className={styles.mutedText}>
+              Use slash commands in Copilot Chat to access tools:
+            </Text>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li><Text size={200}>/compile_file - Compile the current Papyrus file</Text></li>
+              <li><Text size={200}>/switch_game starfield - Switch to Starfield profile</Text></li>
+              <li><Text size={200}>/get_game_config - View current settings</Text></li>
+              <li><Text size={200}>/rebuild_index - Refresh script index</Text></li>
+              <li><Text size={200}>/scan_diagnostics - Check for errors</Text></li>
+            </ul>
+          </div>
+          <div className={styles.summaryCard}>
+            <Text weight="semibold">Integration Status</Text>
+            <Text size={200} className={styles.mutedText}>
+              The MCP server automatically registers with VS Code when the extension activates.
+              Check the Copilot Chat tools list to see "Papyrus Tools" available.
+            </Text>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const styles = useStyles();
   const [selected, setSelected] = React.useState<SectionKey>('overview');
@@ -3101,6 +3474,12 @@ const AppContent: React.FC = () => {
     const listener = (event: MessageEvent<{ type?: string; theme?: PapyrusThemeMode; payload?: unknown }>) => {
       if (event.data?.type === 'theme' && event.data.theme) {
         setThemeMode(event.data.theme);
+      }
+      if (event.data?.type === 'papyrusTools.navigateToSection' && event.data.payload && typeof event.data.payload === 'object') {
+        const payload = event.data.payload as { section?: string };
+        if (payload.section && typeof payload.section === 'string') {
+          setSelected(payload.section as SectionKey);
+        }
       }
       if (event.data?.type === 'papyrusTools.setupState' && event.data.payload && typeof event.data.payload === 'object') {
         const payload = event.data.payload as { setupWizardCompleted?: boolean; projects?: unknown; activeProject?: unknown };
@@ -3221,13 +3600,19 @@ const AppContent: React.FC = () => {
       );
       break;
     case 'workspace':
-      mainContent = <WorkspaceContent activeProject={activeProject} />;
+      mainContent = <WorkspaceContent activeProject={activeProject} onNavigate={handleNavigate} />;
       break;
     case 'compiler':
       mainContent = <CompilerContent />;
       break;
     case 'debugging':
       mainContent = <DebuggingContent />;
+      break;
+    case 'commands':
+      mainContent = <CommandsContent />;
+      break;
+    case 'mcpServer':
+      mainContent = <McpServerContent />;
       break;
     case 'projects':
       mainContent = <ProjectsOverview projects={projects} onNavigateWorkspace={() => handleNavigate('workspace')} activeProject={activeProject} />;
@@ -3238,18 +3623,18 @@ const AppContent: React.FC = () => {
 
   return (
     <FluentProvider theme={theme} className={styles.root}>
-      <nav className={styles.sidebar}>
+      <nav className={`${styles.sidebar} papyrus-control-center-sidebar`}>
         <Text className={styles.sidebarHeader} size={400}>Control Center</Text>
         <div className={styles.sidebarBrand}>
           <img className={styles.brandImage} src={logoSvg} alt="Papyrus Tools" />
-          <Text size={200} className={styles.brandTitle}>Papyrus Control Center</Text>
         </div>
         {[{
           label: undefined,
-          tabs: [{ value: 'overview', label: 'Control Centre' as const }]
-        }, {
-          label: undefined,
-          tabs: [{ value: 'projects', label: 'Projects' as const }]
+          tabs: [
+            { value: 'overview', label: 'Control Centre' as const },
+            { value: 'projects', label: 'Projects' as const },
+
+          ]
         }, {
           label: 'Settings',
           tabs: [
@@ -3257,7 +3642,11 @@ const AppContent: React.FC = () => {
           ]
         }, {
           label: 'Troubleshooting',
-          tabs: [{ value: 'debugging', label: 'Debugging' as const }]
+          tabs: [
+            { value: 'debugging', label: 'Debugging' as const },
+            { value: 'commands', label: 'Commands' as const },
+            { value: 'mcpServer', label: 'MCP Server' as const }
+          ]
         }].map(group => {
           const active = group.tabs.some(tab => tab.value === selected) ? selected : undefined;
 
@@ -3287,17 +3676,21 @@ const AppContent: React.FC = () => {
           <Text weight="semibold" size={500}>
             {selected === 'overview' && 'Control Centre'}
             {selected === 'setupWizard' && 'Setup Wizard'}
-            {selected === 'workspace' && 'Workspace Setup'}
+            {selected === 'workspace' && 'Project Setup'}
             {selected === 'compiler' && 'Compiler Settings'}
             {selected === 'debugging' && 'Troubleshooting & Debugging'}
+            {selected === 'commands' && 'Papyrus Tools Commands'}
+            {selected === 'mcpServer' && 'MCP Server Integration'}
             {selected === 'projects' && 'Projects'}
           </Text>
           <Text size={200} className={styles.mutedText}>
             {selected === 'overview' && 'Access quick actions, workspace status, and project shortcuts.'}
             {selected === 'setupWizard' && 'Run the guided setup to establish paths and profiles for your modding tools.'}
-            {selected === 'workspace' && 'Provide workspace metadata to tailor Papyrus helpers to this mod.'}
+            {selected === 'workspace' && 'Provide project metadata to tailor Papyrus helpers to this mod.'}
             {selected === 'compiler' && 'Manage compiler inputs, outputs, and namespaces for Papyrus builds.'}
             {selected === 'debugging' && 'Configure how Papyrus Tools scans and reports issues across scripts.'}
+            {selected === 'commands' && 'Complete reference of all available Papyrus Tools commands with descriptions and direct execution.'}
+            {selected === 'mcpServer' && 'Monitor MCP server status and view available tools for GitHub Copilot Chat integration.'}
             {selected === 'projects' && 'Manage and switch between saved workspace project configurations.'}
           </Text>
           {selected === 'overview' && (

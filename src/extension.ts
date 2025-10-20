@@ -3,7 +3,7 @@ import 'source-map-support/register';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GameProfile, GameProfileKey, SUPPORTED_GAMES, GAME_TO_PROFILE_KEY, PROFILE_KEY_TO_GAME } from './gameTypes';
-import { registerPapyrusCommandsView } from './papyrusCommandsView';
+import { registerPapyrusCommandsView } from './papyrusSidebarView';
 import { GameSettingKeys, LEGACY_GAME_SETTING_KEYS, loadGameConfigurationKeys } from './configKeys';
 import { CompilerSettingsSnapshot } from './papyrusConfigTypes';
 import { runInteractiveCompile } from './interactiveCompileFlow';
@@ -96,6 +96,35 @@ export function activate(context: vscode.ExtensionContext) {
     return SUPPORTED_GAMES.includes(g as GameProfile) ? (g as GameProfile) : 'Starfield';
   };
 
+  const gameToProfileKey = (g: GameProfile): GameProfileKey => GAME_TO_PROFILE_KEY[g];
+
+  const getGamesConfig = (cfg: vscode.WorkspaceConfiguration): Record<string, any> => {
+    const raw = cfg.get<any>('games');
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return {};
+    }
+    return raw as Record<string, any>;
+  };
+
+  const getActiveProjectName = (): string | undefined => {
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const game = getGame();
+    const gameKey = gameToProfileKey(game);
+    const gamesRecord = getGamesConfig(cfg);
+    const activeEntry = gamesRecord[gameKey];
+    const namespaceDirValue = activeEntry?.namespaceDir?.trim();
+    if (!namespaceDirValue) return undefined;
+
+    // Get projects list
+    const projectsSetting = cfg.get<unknown>('Projects');
+    const projects = Array.isArray(projectsSetting) ? projectsSetting.filter(p => p && typeof p === 'object' && p.name && p.namespace) : [];
+
+    // Find matching project
+    const namespaceLookup = namespaceDirValue.toLowerCase();
+    const matchingProject = projects.find((p: any) => p.namespace?.toLowerCase() === namespaceLookup);
+    return matchingProject?.name || path.basename(namespaceDirValue);
+  };
+
   // Status bar to show/switch game profile
   const gameStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   gameStatus.name = 'Papyrus Game Profile';
@@ -108,16 +137,23 @@ export function activate(context: vscode.ExtensionContext) {
   };
   updateGameStatus();
 
-  // Status bar: quick open settings for current game
-  const settingsStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
-  settingsStatus.name = 'Papyrus Settings';
-  settingsStatus.text = '$(gear)';
-  settingsStatus.tooltip = 'Open Papyrus settings for current game';
-  settingsStatus.command = 'papyrusTools.openCurrentGameSettings';
-  settingsStatus.show();
-
-  // Settings helpers aligned with new per-game configuration layout
-  const gameToProfileKey = (g: GameProfile): GameProfileKey => GAME_TO_PROFILE_KEY[g];
+  // Status bar to show/switch active project
+  const projectStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  projectStatus.name = 'Papyrus Active Project';
+  projectStatus.command = 'papyrusTools.switchProject';
+  const updateProjectStatus = () => {
+    const activeProjectName = getActiveProjectName();
+    if (activeProjectName) {
+      projectStatus.text = `$(folder) ${activeProjectName}`;
+      projectStatus.tooltip = 'Switch active Papyrus project';
+      projectStatus.show();
+    } else {
+      projectStatus.text = `$(folder) none`;
+      projectStatus.tooltip = 'No active Papyrus project';
+      projectStatus.show();
+    }
+  };
+  updateProjectStatus();
 
   const getMergedGameConfig = (cfg: vscode.WorkspaceConfiguration, g: GameProfile): NormalizedGameSettings => {
     const gKey = gameToProfileKey(g);
@@ -159,7 +195,9 @@ export function activate(context: vscode.ExtensionContext) {
     'compiler.pathSeparator',
     'autoDetect.additionalBasePaths',
     'autoDetect.includeBothScriptPaths',
-    'autoDetect.useLibraryFoldersVdf'
+    'autoDetect.useLibraryFoldersVdf',
+    'SetupWizard',
+    'Projects'
   ];
 
   const clearPapyrusSettingsForTarget = async (target: vscode.ConfigurationTarget) => {
@@ -469,7 +507,7 @@ export function activate(context: vscode.ExtensionContext) {
   try {
     GAME_SETTING_KEYS = loadGameConfigurationKeys(context.extensionPath);
   } catch (error) {
-    console.warn('[Papyrus] Falling back to legacy configuration key map:', error);
+    console.warn('[Papyrus Tools] Falling back to legacy configuration key map:', error);
   }
   for (const profileKey of Object.keys(GAME_SETTING_KEYS) as GameProfileKey[]) {
     const mapping = GAME_SETTING_KEYS[profileKey];
@@ -477,7 +515,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (!mapping.scriptDirectory) missing.push('ScriptSourceDirectory');
     if (!mapping.compilerDirectory) missing.push('CompilerDirectory');
     if (missing.length) {
-      console.warn(`[Papyrus] Configuration mapping for ${profileKey} is missing: ${missing.join(', ')}`);
+      console.warn(`[Papyrus Tools] Configuration mapping for ${profileKey} is missing: ${missing.join(', ')}`);
     }
   }
 
@@ -486,7 +524,7 @@ export function activate(context: vscode.ExtensionContext) {
     const fullKey = key.startsWith('papyrusTools.') ? key : `papyrusTools.${key}`;
     const inspected = vscode.workspace.getConfiguration().inspect(fullKey);
     if (!inspected) {
-      console.warn(`[Papyrus] Skip update for ${fullKey}: setting is not contributed`);
+      console.warn(`[Papyrus Tools] Skip update for ${fullKey}: setting is not contributed`);
       return false;
     }
     try {
@@ -494,7 +532,7 @@ export function activate(context: vscode.ExtensionContext) {
       return true;
     } catch (error: any) {
       if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-        console.warn(`[Papyrus] Skip update for ${fullKey}: ${error.message}`, error);
+        console.warn(`[Papyrus Tools] Skip update for ${fullKey}: ${error.message}`, error);
         return false;
       }
       throw error;
@@ -594,14 +632,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
     return out;
-  };
-
-  const getGamesConfig = (cfg: vscode.WorkspaceConfiguration): Record<string, any> => {
-    const raw = cfg.get<any>('games');
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-      return {};
-    }
-    return raw as Record<string, any>;
   };
 
   const getGamesEntry = (cfg: vscode.WorkspaceConfiguration, profileKey: GameProfileKey): any | undefined => {
@@ -737,7 +767,7 @@ export function activate(context: vscode.ExtensionContext) {
       return true;
     } catch (error: any) {
       if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-        console.warn(`[Papyrus] Skip update for papyrusTools.games.${profileKey}: ${error.message}`, error);
+        console.warn(`[Papyrus Tools] Skip update for papyrusTools.games.${profileKey}: ${error.message}`, error);
         return false;
       }
       throw error;
@@ -902,8 +932,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         return items;
       }
-    },
-    '.' // trigger on dot to help with object members
+    }
   );
 
   const hoverProvider = vscode.languages.registerHoverProvider(selector, {
@@ -1757,7 +1786,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
       } catch (error: any) {
         if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-          console.warn(`[Papyrus] Auto-detect skip for ${profileKey}: ${error.message}`, error);
+          console.warn(`[Papyrus Tools] Auto-detect skip for ${profileKey}: ${error.message}`, error);
         } else {
           throw error;
         }
@@ -1777,7 +1806,7 @@ export function activate(context: vscode.ExtensionContext) {
           await applyProfile(key);
         } catch (error: any) {
           if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-            console.warn(`[Papyrus] Auto-detect skip for ${key}: ${error.message}`, error);
+            console.warn(`[Papyrus Tools] Auto-detect skip for ${key}: ${error.message}`, error);
           } else {
             throw error;
           }
@@ -1807,7 +1836,7 @@ export function activate(context: vscode.ExtensionContext) {
           await applyProfile(key);
         } catch (error: any) {
           if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-            console.warn(`[Papyrus] Auto-detect skip for ${key}: ${error.message}`, error);
+            console.warn(`[Papyrus Tools] Auto-detect skip for ${key}: ${error.message}`, error);
           } else {
             throw error;
           }
@@ -1834,7 +1863,7 @@ export function activate(context: vscode.ExtensionContext) {
           await applyProfile(key);
         } catch (error: any) {
           if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-            console.warn(`[Papyrus] Auto-detect skip for ${key}: ${error.message}`, error);
+            console.warn(`[Papyrus Tools] Auto-detect skip for ${key}: ${error.message}`, error);
           } else {
             throw error;
           }
@@ -1848,7 +1877,7 @@ export function activate(context: vscode.ExtensionContext) {
       return detected;
     } catch (error: any) {
       if (typeof error?.message === 'string' && /not a registered configuration/i.test(error.message)) {
-        console.warn('[Papyrus] Auto-detect encountered unregistered configuration; returning detected paths.', error);
+        console.warn('[Papyrus Tools] Auto-detect encountered unregistered configuration; returning detected paths.', error);
         return detected;
       }
       throw error;
@@ -1883,11 +1912,58 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(`Papyrus game profile set to ${pick}. Defaults will be applied automatically.`);
   });
 
+  // Switch project command
+  const switchProjectCmd = vscode.commands.registerCommand('papyrusTools.switchProject', async () => {
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const projectsSetting = cfg.get<unknown>('Projects');
+    const projects = Array.isArray(projectsSetting) ? projectsSetting.filter(p => p && typeof p === 'object' && p.name && p.namespace) : [];
+
+    if (projects.length === 0) {
+      vscode.window.showInformationMessage('No projects configured. Use the Control Center to set up projects.');
+      return;
+    }
+
+    const projectItems = projects.map((p: any) => ({
+      label: p.name,
+      description: p.namespace,
+      detail: `Project: ${p.name}`,
+      project: p
+    }));
+
+    const pick = await vscode.window.showQuickPick(projectItems, {
+      title: 'Select Papyrus Project',
+      placeHolder: 'Choose the project to switch to'
+    });
+
+    if (!pick) return;
+
+    // Load the selected project
+    const game = getGame();
+    const gameKey = gameToProfileKey(game);
+    const target: vscode.ConfigurationTarget = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+
+    // Update the game's namespace directory to match the selected project
+    const gamesRecord = getGamesConfig(cfg);
+    const currentGameEntry = gamesRecord[gameKey] || {};
+    const updatedGameEntry = { ...currentGameEntry, namespaceDir: pick.project.namespace };
+
+    const updatedGames = { ...gamesRecord, [gameKey]: updatedGameEntry };
+    await cfg.update('games', updatedGames, target);
+
+    updateProjectStatus();
+    await buildIndex();
+    vscode.window.showInformationMessage(`Switched to project: ${pick.project.name}`);
+  });
+
   // React to configuration changes
   const cfgChange = vscode.workspace.onDidChangeConfiguration(async e => {
   if (e.affectsConfiguration('papyrusTools.defaultGame')) {
       updateGameStatus();
+      updateProjectStatus();
       await applyDefaultProfile(getGame(), { notify: true });
+    }
+    if (e.affectsConfiguration('papyrusTools.games') || e.affectsConfiguration('papyrusTools.Projects')) {
+      updateProjectStatus();
     }
   });
 
@@ -1933,8 +2009,8 @@ export function activate(context: vscode.ExtensionContext) {
 ${getKeywordsForGame(game).slice(0, 10).map(kw => `\`${kw}\``).join(', ')}
 
 ### Game-Specific Features
-${game === 'Starfield' ? '- **Structs**: \`Struct MyStruct\` ... \`EndStruct\`' : ''}
-${game === 'Fallout' || game === 'Starfield' ? '- **Arrays**: \`Type[] myArray\`' : ''}
+${game === 'Starfield' ? '- **Structs**: `Struct MyStruct` ... `EndStruct`' : ''}
+${game === 'Fallout' || game === 'Starfield' ? '- **Arrays**: `Type[] myArray`' : ''}
 
 ### Getting Started
 1. Set up your game profile with \`Papyrus: Switch Game Profile\`
@@ -2214,15 +2290,41 @@ Try using one of the specific commands above, or ask me directly about Papyrus s
     scanScriptsCmd,
     autoDetectCmd,
     switchGameCmd,
+    switchProjectCmd,
     cfgChange,
     gameStatus,
-    settingsStatus,
+    projectStatus,
     openCurrentGameSettingsCmd
     ,exportCurrentProfileCmd
     ,importProfileCmd
     ,openWorkspaceSettingsJsonCmd
     ,createDefaultProfilesCmd,
     chatParticipant
+  );
+
+  // Register MCP server definition provider
+  const mcpProvider: vscode.McpServerDefinitionProvider = {
+    provideMcpServerDefinitions: (_token: vscode.CancellationToken) => {
+      const env: Record<string, string | number | null> = {};
+      for (const [key, value] of Object.entries(process.env)) {
+        if (value !== undefined) {
+          env[key] = value;
+        }
+      }
+      return [{
+        id: 'papyrus-tools-mcp',
+        label: 'Papyrus Tools MCP Server',
+        displayName: 'Papyrus Tools MCP Server',
+        description: 'Provides Papyrus scripting tools for Bethesda games',
+        command: 'node',
+        args: [context.asAbsolutePath('out/mcpServer.js')],
+        env
+      }];
+    }
+  };
+
+  context.subscriptions.push(
+    vscode.lm.registerMcpServerDefinitionProvider('papyrus-tools-mcp', mcpProvider)
   );
 }
 

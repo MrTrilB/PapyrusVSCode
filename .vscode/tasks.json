@@ -1,0 +1,53 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "webpack-dev",
+            "label": "npm: webpack-dev",
+            "group": "build",
+            "presentation": {
+                "panel": "shared",
+                "reveal": "silent"
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            "type": "npm",
+            "script": "test-compile",
+            "label": "npm: test-compile",
+            "group": "build",
+            "presentation": {
+                "panel": "shared",
+                "reveal": "silent"
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            "type": "npm",
+            "script": "watch",
+            "group": "build",
+            "presentation": {
+                "panel": "shared",
+                "reveal": "silent"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "typescript",
+                "source": "ts",
+                "applyTo": "closedDocuments",
+                "fileLocation": ["relative", "${cwd}"],
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "(.*?)"
+                    },
+                    "endsPattern": {
+                        "regexp": "Found \\d+ errors? Watching for file changes\\.|Compilation complete\\. Watching for file changes\\."
+                    }
+                }
+            }
+        }
+    ]
+}

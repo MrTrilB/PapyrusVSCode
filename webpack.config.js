@@ -42,7 +42,8 @@ const extensionConfig = {
           {
             loader: "source-map-loader"
           }
-        ]
+        ],
+        exclude: /node_modules\/@modelcontextprotocol/
       }
     ]
   },
@@ -55,7 +56,8 @@ const webviewConfig = {
   target: "web",
   mode: "none",
   entry: {
-    main: path.resolve(__dirname, "src", "webview", "main.tsx")
+    mainView: path.resolve(__dirname, "src", "webview", "mainView.tsx"),
+    controlCenter: path.resolve(__dirname, "src", "webview", "controlCenterView.tsx")
   },
   output: {
     path: path.resolve(__dirname, "out", "webview"),
@@ -94,6 +96,45 @@ const webviewConfig = {
           {
             loader: "source-map-loader"
           }
+        ],
+        exclude: /node_modules\/@modelcontextprotocol/
+      }
+    ]
+  },
+  infrastructureLogging: {
+    level: "warn",
+  }
+};
+
+const mcpServerConfig = {
+  target: "node",
+  mode: "none",
+  entry: "./src/mcpServer.ts",
+  output: {
+    path: path.resolve(__dirname, "out"),
+    filename: "mcpServer.js",
+    libraryTarget: "commonjs2",
+    devtoolModuleFilenameTemplate: "../../[resource-path]"
+  },
+  devtool: false, // Disable source maps for MCP server to avoid warnings
+  externals: {
+    // No externals for MCP server - it runs standalone
+  },
+  resolve: {
+    extensions: [".ts", ".tsx", ".js", ".jsx"],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: [/node_modules\//, /src[\\\/]test[\\\/]?/],
+        use: [
+          {
+            loader: "ts-loader",
+            options: {
+              transpileOnly: false
+            }
+          }
         ]
       }
     ]
@@ -103,4 +144,4 @@ const webviewConfig = {
   }
 };
 
-module.exports = [extensionConfig, webviewConfig];
+module.exports = [extensionConfig, webviewConfig, mcpServerConfig];

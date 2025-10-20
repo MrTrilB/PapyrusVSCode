@@ -6,7 +6,11 @@ async function main() {
     const extensionDevelopmentPath = path.resolve(__dirname, '../../');
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
 
-    await runTests({ extensionDevelopmentPath, extensionTestsPath });
+    await runTests({ 
+      extensionDevelopmentPath, 
+      extensionTestsPath,
+      launchArgs: ['--enable-proposed-api', 'MrTrilB.papyrus-tools']
+    });
   } catch (err) {
     console.error('Failed to run tests');
     if (err instanceof Error) {

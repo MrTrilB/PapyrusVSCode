@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { startMcpServer, stopMcpServer, restartMcpServer } from './mcpServerManager';
 
 const getNonce = () => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -15,11 +16,23 @@ export class ControlCenterPanel {
   private static instance: ControlCenterPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
+  private readonly extensionPath: string;
   private disposables: vscode.Disposable[] = [];
+
+  public static get currentPanel(): ControlCenterPanel | undefined {
+    return ControlCenterPanel.instance;
+  }
+
+  public postMessage(message: any): void {
+    if (this.panel.webview) {
+      this.panel.webview.postMessage(message);
+    }
+  }
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
     this.panel = panel;
     this.extensionUri = extensionUri;
+    this.extensionPath = extensionUri.fsPath;
     this.update();
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -77,7 +90,7 @@ export class ControlCenterPanel {
   private getHtmlForWebview(webview: vscode.Webview): string {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'main.js')
+      vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'controlCenter.js')
     );
     const initialTheme = this.getThemeMode(vscode.window.activeColorTheme.kind);
 
@@ -111,6 +124,8 @@ export class ControlCenterPanel {
       height: 100%;
       width: 100%;
     }
+
+    
   </style>
 </head>
 <body>
@@ -160,6 +175,8 @@ export class ControlCenterPanel {
       await this.handleOpenSettingsRequest(message.payload);
     } else if (message.type === 'papyrusTools.requestSetupState') {
       await this.postSetupState();
+    } else if (message.type === 'papyrusTools.gameProfileChanged') {
+      await this.handleGameProfileChanged(message.payload as { game: string });
     } else if (message.type === 'papyrusTools.saveWizardSettings') {
       await this.handleSaveWizardSettings(message.payload);
     } else if (message.type === 'papyrusTools.pathCheck') {
@@ -190,6 +207,14 @@ export class ControlCenterPanel {
       await this.handleClearSettingsRequest();
     } else if (message.type === 'papyrusTools.createDefaults') {
       await this.handleCreateDefaultsRequest();
+    } else if (message.type === 'papyrusTools.startMcpServer') {
+      await this.handleStartMcpServer();
+    } else if (message.type === 'papyrusTools.stopMcpServer') {
+      await this.handleStopMcpServer();
+    } else if (message.type === 'papyrusTools.restartMcpServer') {
+      await this.handleRestartMcpServer();
+    } else if (message.type === 'papyrusTools.executeCommand') {
+      await this.handleExecuteCommand(message.payload);
     }
   }
 
@@ -225,7 +250,7 @@ export class ControlCenterPanel {
       });
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
-      console.error('[Papyrus] Auto-detect request failed:', error);
+      console.error('[Papyrus Tools] Auto-detect request failed:', error);
       this.panel.webview.postMessage({
         type: 'papyrusTools.autoDetectResult',
         status: 'error',
@@ -238,10 +263,10 @@ export class ControlCenterPanel {
   private async handleOpenSettingsRequest(payload: unknown) {
     try {
       const request = typeof payload === 'object' && payload !== null ? payload as { query?: string } : undefined;
-      const query = request?.query || '@ext:MrTrilB.papyrus-tools papyrus.games';
+      const query = request?.query || '@ext:MrTrilB.papyrus-tools papyrusTools.games';
       await vscode.commands.executeCommand('workbench.action.openSettings', query);
     } catch (error) {
-      console.error('[Papyrus] Failed to open settings from Control Center webview:', error);
+      console.error('[Papyrus Tools] Failed to open settings from Control Center webview:', error);
     }
   }
 
@@ -315,12 +340,12 @@ export class ControlCenterPanel {
     }
   }
 
-  private sanitizeProjectSettings(input: unknown): Array<{ name: string; namespace: string }> {
+  private sanitizeProjectSettings(input: unknown): Array<{ name: string; namespace: string; active?: boolean }> {
     if (!Array.isArray(input)) {
       return [];
     }
     const seen = new Set<string>();
-    const projects: Array<{ name: string; namespace: string }> = [];
+    const projects: Array<{ name: string; namespace: string; active?: boolean }> = [];
     for (const entry of input) {
       if (!entry || typeof entry !== 'object') {
         continue;
@@ -340,6 +365,7 @@ export class ControlCenterPanel {
           : typeof obj.projectNamespace === 'string'
             ? obj.projectNamespace.trim()
             : '';
+      const active = typeof obj.active === 'boolean' ? obj.active : undefined;
       if (!name || !namespace) {
         continue;
       }
@@ -348,7 +374,7 @@ export class ControlCenterPanel {
         continue;
       }
       seen.add(key);
-      projects.push({ name, namespace });
+      projects.push({ name, namespace, active });
     }
     return projects;
   }
@@ -484,7 +510,7 @@ export class ControlCenterPanel {
               manifestEntry = found;
             }
           } catch (error) {
-            console.warn('[Papyrus] Failed to parse papyrus-projects.json for project summary:', error);
+            console.warn('[Papyrus Tools] Failed to parse papyrus-projects.json for project summary:', error);
           }
         }
       }
@@ -518,7 +544,7 @@ export class ControlCenterPanel {
   }
 
   private async postSetupState(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const gamesRaw = cfg.get<unknown>('games');
     const gamesRecord = (gamesRaw && typeof gamesRaw === 'object' && !Array.isArray(gamesRaw)) ? gamesRaw as Record<string, any> : {};
 
@@ -534,45 +560,35 @@ export class ControlCenterPanel {
 
     const games: Array<'starfield' | 'fallout' | 'skyrim'> = ['starfield', 'fallout', 'skyrim'];
     for (const key of games) {
-      const entry = gamesRecord[key];
-      const prefixes = this.mapGameKeyToConfigPrefix(key);
+      const gameConfig = this.getGameConfig(key);
+      if (gameConfig) {
+        const entry = gamesRecord[key];
+        const rawScriptPaths: string[] = [];
+        if (Array.isArray(entry?.scriptPaths)) {
+          rawScriptPaths.push(...entry.scriptPaths);
+        }
+        const topLevelScript = cfg.get<string>(this.mapGameKeyToConfigPrefix(key).script) || '';
+        if (topLevelScript.trim()) {
+          rawScriptPaths.push(topLevelScript);
+        }
+        const scriptPaths = this.sanitizePathArray(rawScriptPaths);
 
-      const rawScriptPaths: string[] = [];
-      if (Array.isArray(entry?.scriptPaths)) {
-        rawScriptPaths.push(...entry.scriptPaths);
+        const compilerFromGames = typeof entry?.compiler?.path === 'string' ? entry.compiler.path.trim() : '';
+        const compilerTopLevel = (cfg.get<string>(this.mapGameKeyToConfigPrefix(key).compiler) || '').trim();
+        const compilerPath = compilerFromGames || compilerTopLevel;
+
+        const outputFragmentsDir = typeof entry?.outputFragmentsDir === 'string' ? entry.outputFragmentsDir.trim() : '';
+
+        payload[key] = {
+          scriptPaths,
+          compilerPath,
+          namespaceDir: gameConfig.namespaceDir,
+          namespaceFragmentsDir: gameConfig.namespaceFragmentsDir,
+          outputDir: gameConfig.outputDir,
+          outputFragmentsDir,
+          rootPath: gameConfig.rootPath
+        };
       }
-      const topLevelScript = cfg.get<string>(prefixes.script) || '';
-      if (topLevelScript.trim()) {
-        rawScriptPaths.push(topLevelScript);
-      }
-      const scriptPaths = this.sanitizePathArray(rawScriptPaths);
-
-      const compilerFromGames = typeof entry?.compiler?.path === 'string' ? entry.compiler.path.trim() : '';
-      const compilerTopLevel = (cfg.get<string>(prefixes.compiler) || '').trim();
-      const compilerPath = compilerFromGames || compilerTopLevel;
-
-  const namespaceDirFromConfig = cfg.get<string>(prefixes.namespace) || '';
-  const namespaceDirFromGames = typeof entry?.namespaceDir === 'string' ? entry.namespaceDir.trim() : '';
-  const namespaceDir = namespaceDirFromConfig || namespaceDirFromGames;
-
-  const namespaceFragmentsDir = typeof entry?.namespaceFragmentsDir === 'string' ? entry.namespaceFragmentsDir.trim() : '';
-
-  const outputDirFromConfig = cfg.get<string>(prefixes.output) || '';
-  const outputDirFromGames = typeof entry?.outputDir === 'string' ? entry.outputDir.trim() : '';
-  const outputDir = outputDirFromConfig || outputDirFromGames;
-
-  const outputFragmentsDir = typeof entry?.outputFragmentsDir === 'string' ? entry.outputFragmentsDir.trim() : '';
-      const rootPath = this.deriveGameRoot(scriptPaths, compilerPath, key);
-
-      payload[key] = {
-        scriptPaths,
-        compilerPath,
-        namespaceDir,
-        namespaceFragmentsDir,
-        outputDir,
-        outputFragmentsDir,
-        rootPath
-      };
     }
 
     const setupWizardCompleted = cfg.get<boolean>('SetupWizard') === true;
@@ -623,9 +639,78 @@ export class ControlCenterPanel {
     });
   }
 
+  private async handleGameProfileChanged(payload: { game: string }): Promise<void> {
+    const game = payload.game as 'skyrim' | 'fallout' | 'starfield';
+    const gameConfig = this.getGameConfig(game);
+
+    if (gameConfig) {
+      this.postMessage({
+        type: 'papyrusTools.folderPaths',
+        payload: {
+          [game]: {
+            namespaceDir: gameConfig.namespaceDir,
+            outputDir: gameConfig.outputDir,
+            namespaceFragmentsDir: gameConfig.namespaceFragmentsDir,
+            rootPath: gameConfig.rootPath
+          }
+        }
+      });
+    }
+  }
+
+  private getGameConfig(game: 'skyrim' | 'fallout' | 'starfield'): {
+    namespaceDir: string;
+    outputDir: string;
+    namespaceFragmentsDir: string;
+    outputFragmentsDir: string;
+    rootPath: string;
+  } | undefined {
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const gamesRaw = cfg.get<unknown>('games');
+    const gamesRecord = (gamesRaw && typeof gamesRaw === 'object' && !Array.isArray(gamesRaw)) ? gamesRaw as Record<string, any> : {};
+
+    const entry = gamesRecord[game];
+    const prefixes = this.mapGameKeyToConfigPrefix(game);
+
+    const rawScriptPaths: string[] = [];
+    if (Array.isArray(entry?.scriptPaths)) {
+      rawScriptPaths.push(...entry.scriptPaths);
+    }
+    const topLevelScript = cfg.get<string>(prefixes.script) || '';
+    if (topLevelScript.trim()) {
+      rawScriptPaths.push(topLevelScript);
+    }
+    const scriptPaths = this.sanitizePathArray(rawScriptPaths);
+
+    const compilerFromGames = typeof entry?.compiler?.path === 'string' ? entry.compiler.path.trim() : '';
+    const compilerTopLevel = (cfg.get<string>(prefixes.compiler) || '').trim();
+    const compilerPath = compilerFromGames || compilerTopLevel;
+
+    const namespaceDirFromConfig = cfg.get<string>(prefixes.namespace) || '';
+    const namespaceDirFromGames = typeof entry?.namespaceDir === 'string' ? entry.namespaceDir.trim() : '';
+    const namespaceDir = namespaceDirFromConfig || namespaceDirFromGames;
+
+    const namespaceFragmentsDir = typeof entry?.namespaceFragmentsDir === 'string' ? entry.namespaceFragmentsDir.trim() : '';
+
+    const outputDirFromConfig = cfg.get<string>(prefixes.output) || '';
+    const outputDirFromGames = typeof entry?.outputDir === 'string' ? entry.outputDir.trim() : '';
+    const outputDir = outputDirFromConfig || outputDirFromGames;
+
+    const outputFragmentsDir = typeof entry?.outputFragmentsDir === 'string' ? entry.outputFragmentsDir.trim() : '';
+    const rootPath = this.deriveGameRoot(scriptPaths, compilerPath, game);
+
+    return {
+      namespaceDir,
+      outputDir,
+      namespaceFragmentsDir,
+      outputFragmentsDir,
+      rootPath
+    };
+  }
+
   private async handleSaveWizardSettings(payload: unknown): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration('papyrus');
-    const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const target = vscode.ConfigurationTarget.Global;
 
     type GamePayload = {
       key?: string;
@@ -739,7 +824,7 @@ export class ControlCenterPanel {
         try {
           fs.mkdirSync(dir, { recursive: true });
         } catch (error) {
-          console.warn('[Papyrus] Failed to ensure directory from wizard:', dir, error);
+          console.warn('[Papyrus Tools] Failed to ensure directory from wizard:', dir, error);
         }
       }
 
@@ -781,7 +866,7 @@ export class ControlCenterPanel {
 
       this.panel.webview.postMessage(response);
     } catch (error) {
-      console.error('[Papyrus] Failed to evaluate path existence from Control Center:', error);
+      console.error('[Papyrus Tools] Failed to evaluate path existence from Control Center:', error);
     }
   }
 
@@ -809,7 +894,7 @@ export class ControlCenterPanel {
             projects = parsed.filter(entry => typeof entry?.code === 'string');
           }
         } catch (error) {
-          console.warn('[Papyrus] Failed to read papyrus-projects.json:', error);
+          console.warn('[Papyrus Tools] Failed to read papyrus-projects.json:', error);
         }
       }
 
@@ -818,7 +903,7 @@ export class ControlCenterPanel {
         projects
       });
     } catch (error) {
-      console.error('[Papyrus] Failed to collect workspace projects:', error);
+      console.error('[Papyrus Tools] Failed to collect workspace projects:', error);
       this.panel.webview.postMessage({
         type: 'papyrusTools.workspaceProjects',
         projects: [],
@@ -875,7 +960,7 @@ export class ControlCenterPanel {
             projects = parsed.filter(entry => typeof entry?.code === 'string');
           }
         } catch (error) {
-          console.warn('[Papyrus] Failed to parse existing papyrus-projects.json:', error);
+          console.warn('[Papyrus Tools] Failed to parse existing papyrus-projects.json:', error);
         }
       }
 
@@ -898,16 +983,16 @@ export class ControlCenterPanel {
             fs.mkdirSync(target, { recursive: true });
           }
         } catch (error) {
-          console.warn('[Papyrus] Failed to ensure workspace project directory:', target, error);
+          console.warn('[Papyrus Tools] Failed to ensure workspace project directory:', target, error);
         }
       }
 
-      const cfg = vscode.workspace.getConfiguration('papyrus');
-      const targetScope = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+      const cfg = vscode.workspace.getConfiguration('papyrusTools');
+      const targetScope = vscode.ConfigurationTarget.Global;
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
   const lowerName = projectName.toLowerCase();
   const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== lowerName);
-  updatedProjects.push({ name: projectName, namespace: namespaceDir });
+  updatedProjects.push({ name: projectName, namespace: namespaceDir, active: false });
       await cfg.update('Projects', updatedProjects, targetScope);
 
       this.panel.webview.postMessage({
@@ -953,8 +1038,31 @@ export class ControlCenterPanel {
         return;
       }
 
-      const cfg = vscode.workspace.getConfiguration('papyrus');
-      const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+      const cfg = vscode.workspace.getConfiguration('papyrusTools');
+      const target = vscode.ConfigurationTarget.Global;
+
+      // Update the Projects setting to manage active state
+      const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
+      const updatedProjects = existingProjects.map(project => ({
+        ...project,
+        active: false // Set all existing projects to inactive
+      }));
+
+      // Find the project being loaded and set it to active
+      const projectIndex = updatedProjects.findIndex(p => p.name === projectName && p.namespace === namespaceDir);
+      if (projectIndex >= 0) {
+        updatedProjects[projectIndex].active = true;
+      } else {
+        // If project not found in settings, add it as active
+        updatedProjects.push({
+          name: projectName,
+          namespace: namespaceDir,
+          active: true
+        });
+      }
+
+      await cfg.update('Projects', updatedProjects, target);
+
       const gamesRaw = cfg.get<unknown>('games');
       const currentGames = (gamesRaw && typeof gamesRaw === 'object' && !Array.isArray(gamesRaw)) ? { ...(gamesRaw as Record<string, any>) } : {};
       const existing = currentGames[gameKey] && typeof currentGames[gameKey] === 'object' && !Array.isArray(currentGames[gameKey])
@@ -1058,7 +1166,7 @@ export class ControlCenterPanel {
           });
           return filtered;
         } catch (error) {
-          console.warn('[Papyrus] Failed to update project manifest while removing entry:', error);
+          console.warn('[Papyrus Tools] Failed to update project manifest while removing entry:', error);
           return [] as any[];
         }
       };
@@ -1070,7 +1178,7 @@ export class ControlCenterPanel {
           try {
             fs.writeFileSync(oldManifest, JSON.stringify(filtered, null, 2), 'utf8');
           } catch (error) {
-            console.warn('[Papyrus] Failed to write updated project manifest for old namespace:', error);
+            console.warn('[Papyrus Tools] Failed to write updated project manifest for old namespace:', error);
           }
         }
       }
@@ -1089,7 +1197,7 @@ export class ControlCenterPanel {
             manifestEntries = parsed;
           }
         } catch (error) {
-          console.warn('[Papyrus] Failed to parse target manifest while updating project:', error);
+          console.warn('[Papyrus Tools] Failed to parse target manifest while updating project:', error);
         }
       }
 
@@ -1117,14 +1225,14 @@ export class ControlCenterPanel {
       try {
         fs.writeFileSync(newManifest, JSON.stringify(filtered, null, 2), 'utf8');
       } catch (error) {
-        console.warn('[Papyrus] Failed to persist updated project manifest:', error);
+        console.warn('[Papyrus Tools] Failed to persist updated project manifest:', error);
       }
 
-      const cfg = vscode.workspace.getConfiguration('papyrus');
-      const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+      const cfg = vscode.workspace.getConfiguration('papyrusTools');
+      const target = vscode.ConfigurationTarget.Global;
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
       const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== (originalName || projectName).toLowerCase());
-      updatedProjects.push({ name: projectName, namespace: namespaceDir });
+      updatedProjects.push({ name: projectName, namespace: namespaceDir, active: false });
       await cfg.update('Projects', updatedProjects, target);
 
       this.panel.webview.postMessage({
@@ -1183,13 +1291,13 @@ export class ControlCenterPanel {
               fs.writeFileSync(manifestPath, JSON.stringify(filtered, null, 2), 'utf8');
             }
           } catch (error) {
-            console.warn('[Papyrus] Failed to update project manifest while deleting entry:', error);
+            console.warn('[Papyrus Tools] Failed to update project manifest while deleting entry:', error);
           }
         }
       }
 
-      const cfg = vscode.workspace.getConfiguration('papyrus');
-      const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+      const cfg = vscode.workspace.getConfiguration('papyrusTools');
+      const target = vscode.ConfigurationTarget.Global;
       const existingProjects = this.sanitizeProjectSettings(cfg.get<unknown>('Projects'));
       const updatedProjects = existingProjects.filter(entry => entry.name.toLowerCase() !== projectName.toLowerCase());
       await cfg.update('Projects', updatedProjects, target);
@@ -1219,12 +1327,12 @@ export class ControlCenterPanel {
       }
       await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(target));
     } catch (error) {
-      console.error('[Papyrus] Failed to reveal path from Control Center:', error);
+      console.error('[Papyrus Tools] Failed to reveal path from Control Center:', error);
     }
   }
 
   private async handleSetSetupWizardCompleted(payload: unknown): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration('papyrus');
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     const request = typeof payload === 'object' && payload !== null ? payload as { completed?: unknown } : undefined;
     const completed = typeof request?.completed === 'boolean' ? request.completed : false;
@@ -1232,13 +1340,13 @@ export class ControlCenterPanel {
       await cfg.update('SetupWizard', completed, target);
       await this.postSetupState();
     } catch (error) {
-      console.error('[Papyrus] Failed to update Setup Wizard completion state:', error);
+      console.error('[Papyrus Tools] Failed to update Setup Wizard completion state:', error);
     }
   }
 
   private async handleScanScriptsRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.scanScriptsForDiagnostics');
+      await vscode.commands.executeCommand('papyrusTools.scanScriptsForDiagnostics');
       // The scan command doesn't return detailed results, so we'll send a generic success
       this.panel.webview.postMessage({
         type: 'papyrusTools.scanResult',
@@ -1247,7 +1355,7 @@ export class ControlCenterPanel {
       });
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during script scan';
-      console.error('[Papyrus] Script scan request failed:', error);
+      console.error('[Papyrus Tools] Script scan request failed:', error);
       this.panel.webview.postMessage({
         type: 'papyrusTools.scanResult',
         status: 'error',
@@ -1259,7 +1367,7 @@ export class ControlCenterPanel {
 
   private async handleRebuildIndexRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.rebuildIndex');
+      await vscode.commands.executeCommand('papyrusTools.rebuildIndex');
       this.panel.webview.postMessage({
         type: 'papyrusTools.rebuildResult',
         status: 'success',
@@ -1267,7 +1375,7 @@ export class ControlCenterPanel {
       });
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during index rebuild';
-      console.error('[Papyrus] Index rebuild request failed:', error);
+      console.error('[Papyrus Tools] Index rebuild request failed:', error);
       this.panel.webview.postMessage({
         type: 'papyrusTools.rebuildResult',
         status: 'error',
@@ -1279,48 +1387,166 @@ export class ControlCenterPanel {
 
   private async handleExportProfileRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.exportCurrentProfile');
+      await vscode.commands.executeCommand('papyrusTools.exportCurrentProfile');
       // The export command handles its own success messaging
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during profile export';
-      console.error('[Papyrus] Profile export request failed:', error);
+      console.error('[Papyrus Tools] Profile export request failed:', error);
       vscode.window.showErrorMessage(`Papyrus profile export failed: ${message}`);
     }
   }
 
   private async handleImportProfileRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.importProfile');
+      await vscode.commands.executeCommand('papyrusTools.importProfile');
       // The import command handles its own success messaging
       await this.postSetupState(); // Refresh the setup state after import
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during profile import';
-      console.error('[Papyrus] Profile import request failed:', error);
+      console.error('[Papyrus Tools] Profile import request failed:', error);
       vscode.window.showErrorMessage(`Papyrus profile import failed: ${message}`);
     }
   }
 
   private async handleClearSettingsRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.clearStoredSettings');
+      await vscode.commands.executeCommand('papyrusTools.clearStoredSettings');
       await this.postSetupState(); // Refresh the setup state after clearing
       vscode.window.showInformationMessage('Papyrus stored settings cleared successfully');
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during settings clear';
-      console.error('[Papyrus] Clear settings request failed:', error);
+      console.error('[Papyrus Tools] Clear settings request failed:', error);
       vscode.window.showErrorMessage(`Papyrus clear settings failed: ${message}`);
     }
   }
 
   private async handleCreateDefaultsRequest(): Promise<void> {
     try {
-      await vscode.commands.executeCommand('papyrus.createDefaultProfiles');
+      await vscode.commands.executeCommand('papyrusTools.createDefaultProfiles');
       await this.postSetupState(); // Refresh the setup state after creating defaults
       // The command handles its own success messaging
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Unknown error during default profile creation';
-      console.error('[Papyrus] Create defaults request failed:', error);
+      console.error('[Papyrus Tools] Create defaults request failed:', error);
       vscode.window.showErrorMessage(`Papyrus create defaults failed: ${message}`);
+    }
+  }
+
+  private async handleStartMcpServer(): Promise<void> {
+    try {
+      await startMcpServer(this.extensionPath);
+      // Send status update to webview
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'running'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'start',
+        status: 'success'
+      });
+    } catch (error: any) {
+      const message = typeof error?.message === 'string' ? error.message : 'Unknown error starting MCP server';
+      console.error('[Papyrus Tools] Start MCP server request failed:', error);
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopped'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'start',
+        status: 'error',
+        message
+      });
+      vscode.window.showErrorMessage(`Failed to start MCP server: ${message}`);
+    }
+  }
+
+  private async handleStopMcpServer(): Promise<void> {
+    try {
+      // Send stopping status first
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopping'
+      });
+      await stopMcpServer();
+      // Send stopped status after successful stop
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopped'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'stop',
+        status: 'success'
+      });
+    } catch (error: any) {
+      const message = typeof error?.message === 'string' ? error.message : 'Unknown error stopping MCP server';
+      console.error('[Papyrus Tools] Stop MCP server request failed:', error);
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopped'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'stop',
+        status: 'error',
+        message
+      });
+      vscode.window.showErrorMessage(`Failed to stop MCP server: ${message}`);
+    }
+  }
+
+  private async handleRestartMcpServer(): Promise<void> {
+    try {
+      // Send stopping status first
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopping'
+      });
+      await restartMcpServer(this.extensionPath);
+      // Send running status after successful restart
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'running'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'restart',
+        status: 'success'
+      });
+    } catch (error: any) {
+      const message = typeof error?.message === 'string' ? error.message : 'Unknown error restarting MCP server';
+      console.error('[Papyrus Tools] Restart MCP server request failed:', error);
+      this.panel.webview.postMessage({
+        command: 'mcpServerStatusUpdate',
+        status: 'stopped'
+      });
+      this.panel.webview.postMessage({
+        type: 'papyrusTools.mcpServerControlResult',
+        command: 'restart',
+        status: 'error',
+        message
+      });
+      vscode.window.showErrorMessage(`Failed to restart MCP server: ${message}`);
+    }
+  }
+
+  private async handleExecuteCommand(payload: unknown): Promise<void> {
+    try {
+      const request = typeof payload === 'object' && payload !== null ? payload as { commandId?: string } : undefined;
+      const commandId = typeof request?.commandId === 'string' ? request.commandId.trim() : '';
+
+      if (!commandId) {
+        console.error('[Papyrus Tools] Execute command request failed: missing commandId');
+        return;
+      }
+
+      await vscode.commands.executeCommand(commandId);
+    } catch (error: any) {
+      const message = typeof error?.message === 'string' ? error.message : 'Unknown error executing command';
+      console.error('[Papyrus Tools] Execute command request failed:', error);
+      vscode.window.showErrorMessage(`Failed to execute command: ${message}`);
     }
   }
 }

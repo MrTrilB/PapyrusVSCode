@@ -1,9 +1,9 @@
-.vscode/**
+#.vscode/**
 .git/**
 src/**
 **/*.map
 **/*.ts
 node_modules/**
-!out/**
+# out/**  # Don't exclude the out directory - it contains the built extension
 README.md
 CHANGELOG.md

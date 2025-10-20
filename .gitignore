@@ -15,6 +15,7 @@ dist/
 
 # VS Code
 .vscode-test/
+!.vscode/
 .vsix
 
 # OS
