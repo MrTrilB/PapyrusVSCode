@@ -260,8 +260,9 @@ export async function runInteractiveCompile(options: InteractiveCompileOptions):
   const cwdValue = workingDirectory ?? undefined;
   const workingDirectoryLabel = workingDirectory ?? '(terminal default)';
 
-  const commandParts = [compilerPath, ...finalArgs, options.document.uri.fsPath].map(quoteIfNeeded);
-  const command = commandParts.join(' ');
+  // Use Start-Process to avoid PowerShell interpreting compiler flags as its own parameters
+  const startProcessArgs = finalArgs.concat([options.document.uri.fsPath]).map(arg => `"${arg.replace(/"/g, '""')}"`).join(', ');
+  const powershellCommand = `Start-Process -FilePath "${compilerPath.replace(/"/g, '""')}" -ArgumentList ${startProcessArgs} -NoNewWindow -Wait`;
 
   const summary = buildSummary({
     game: selectedGame,
@@ -283,7 +284,7 @@ export async function runInteractiveCompile(options: InteractiveCompileOptions):
   }
 
   const terminal = vscode.window.createTerminal({ name: `Papyrus Compile (${selectedGame})`, cwd: cwdValue });
-  terminal.sendText(command);
+  terminal.sendText(powershellCommand);
   terminal.show();
 
   vscode.window.showInformationMessage(`Papyrus: compiling ${path.basename(options.document.uri.fsPath)} using ${selectedGame} profile.`);
@@ -884,14 +885,4 @@ function ensurePath(list: string[], candidate: string): string[] {
 
 function samePath(a: string, b: string): boolean {
   return path.normalize(a).toLowerCase() === path.normalize(b).toLowerCase();
-}
-
-function quoteIfNeeded(token: string): string {
-  if (!token) {
-    return '""';
-  }
-  if (/\s|"/.test(token)) {
-    return `"${token.replace(/"/g, '\\"')}"`;
-  }
-  return token;
 }
