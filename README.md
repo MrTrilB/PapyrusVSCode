@@ -1,8 +1,9 @@
 # Papyrus Tools for VS Code
 
-![Papyrus Tools logo](./Assets/Images/PapyrusTools-LogoColour.png)
-
-Papyrus Tools delivers a modern authoring environment for Bethesda Creation Engine mods inside Visual Studio Code. Whether you are building Starfield quests, Fallout 4 gameplay tweaks, or Skyrim SE automation, the extension combines rich language intelligence with project automation so you can stay focused on your scripts.
+<div style="display: flex; align-items: flex-start; gap: 20px;">
+<img src="./Assets/Images/PapyrusTools-LogoColour.png" alt="Papyrus Tools logo" style="width: 80px; height: auto;">
+<p>Papyrus Tools delivers a modern authoring environment for Bethesda Creation Engine mods inside Visual Studio Code. Whether you are building Starfield quests, Fallout 4 gameplay tweaks, or Skyrim SE automation, the extension combines rich language intelligence with project automation so you can stay focused on your scripts.</p>
+</div>
 
 ## Feature overview
 
