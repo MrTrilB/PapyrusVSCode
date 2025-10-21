@@ -38,6 +38,7 @@
     "onView:papyrus-tools-project-folder",
     "onView:papyrus-tools-output-folder",
     "onCommand:papyrusTools.compileFile",
+    "onCommand:papyrusTools.compileProject",
     "onCommand:papyrusTools.switchGame",
     "onCommand:papyrusTools.configureCompilers",
     "onCommand:papyrusTools.configureScriptFolders",
@@ -93,6 +94,11 @@
       {
         "command": "papyrusTools.compileFile",
         "title": "Papyrus: Compile Current File",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "papyrusTools.compileProject",
+        "title": "Papyrus: Compile Entire Project",
         "icon": "$(tools)"
       },
       {

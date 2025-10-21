@@ -106,23 +106,19 @@ export function activate(context: vscode.ExtensionContext) {
     return raw as Record<string, any>;
   };
 
-  const getActiveProjectName = (): string | undefined => {
+  const getActiveProject = (): { name: string; namespace: string; outputDir: string } | undefined => {
     const cfg = vscode.workspace.getConfiguration('papyrusTools');
     const game = getGame();
     const gameKey = gameToProfileKey(game);
     const gamesRecord = getGamesConfig(cfg);
-    const activeEntry = gamesRecord[gameKey];
-    const namespaceDirValue = activeEntry?.namespaceDir?.trim();
-    if (!namespaceDirValue) return undefined;
-
-    // Get projects list
-    const projectsSetting = cfg.get<unknown>('Projects');
-    const projects = Array.isArray(projectsSetting) ? projectsSetting.filter(p => p && typeof p === 'object' && p.name && p.namespace) : [];
-
-    // Find matching project
-    const namespaceLookup = namespaceDirValue.toLowerCase();
-    const matchingProject = projects.find((p: any) => p.namespace?.toLowerCase() === namespaceLookup);
-    return matchingProject?.name || path.basename(namespaceDirValue);
+    const gameEntry = gamesRecord[gameKey];
+    const namespaceDir = gameEntry?.namespaceDir?.trim();
+    if (!namespaceDir) return undefined;
+    const projects = cfg.get<unknown>('Projects') as any[];
+    const project = projects?.find((p: any) => p.namespace === namespaceDir);
+    if (!project) return undefined;
+    const outputDir = gameEntry?.outputDir?.trim() || '';
+    return { name: project.name, namespace: namespaceDir, outputDir };
   };
 
   // Status bar to show/switch game profile
@@ -1229,7 +1225,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  // Compile command using direct or interactive flow
+  // Compile command: simple one-click with build type selection
   const compileCmd = vscode.commands.registerCommand('papyrusTools.compileFile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -1242,32 +1238,117 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const cfg = vscode.workspace.getConfiguration('papyrusTools');
-    const skipPrompts = cfg.get<boolean>('compile.skipPrompts', false);
+    const buildType = await vscode.window.showQuickPick(['Release', 'Debug'], { placeHolder: 'Choose build type' });
+    if (!buildType) return;
 
-    const currentGame = getGame();
-    const includeFlagSetting: string = cfg.get<string>('compiler.includeFlag') || '-i';
-    const pathSeparatorSetting: string = cfg.get<string>('compiler.pathSeparator') || ';';
-
-    if (skipPrompts) {
-      await runDirectCompile({
-        document: doc,
-        defaultGame: currentGame,
-        supportedGames: SUPPORTED_GAMES,
-        getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
-        includeFlag: includeFlagSetting,
-        pathSeparator: pathSeparatorSetting
-      });
-    } else {
-      await runInteractiveCompile({
-        document: doc,
-        defaultGame: currentGame,
-        supportedGames: SUPPORTED_GAMES,
-        getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
-        includeFlag: includeFlagSetting,
-        pathSeparator: pathSeparatorSetting
-      });
+    const project = getActiveProject();
+    if (!project) {
+      vscode.window.showErrorMessage('No active project configured. Run the Setup Wizard first.');
+      return;
     }
+
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const game = getGame();
+    const settings = getMergedGameConfig(cfg, game);
+    const compilerPath = settings.compiler.path;
+    if (!compilerPath || !fs.existsSync(compilerPath)) {
+      vscode.window.showErrorMessage(`Compiler not found for ${game}. Configure paths first.`);
+      return;
+    }
+
+    await doc.save();
+
+    const flags: string[] = [];
+    if (buildType === 'Release') flags.push('-optimize');
+    if (buildType === 'Debug') flags.push('-debug');
+    if (game === 'Starfield') flags.push('-sf');
+
+    const scriptPaths = [project.namespace, ...settings.scriptPaths.filter(p => p !== project.namespace)];
+    const includeArg = `-i="${scriptPaths.join(';')}"`;
+
+    const relativeDir = path.relative(project.namespace, path.dirname(doc.uri.fsPath));
+    const outputDir = path.join(project.outputDir, relativeDir);
+    const outputArg = `-o="${outputDir}"`;
+
+    const args = [includeArg, outputArg, ...flags, doc.uri.fsPath];
+    const cwd = path.dirname(doc.uri.fsPath);
+
+    const startProcessArgs = args.map(arg => `"${arg.replace(/"/g, '""')}"`).join(', ');
+    const powershellCommand = `Start-Process -FilePath "${compilerPath.replace(/"/g, '""')}" -ArgumentList ${startProcessArgs} -NoNewWindow -Wait`;
+
+    const terminal = vscode.window.createTerminal({ name: `Papyrus Compile (${game})`, cwd });
+    terminal.sendText(powershellCommand);
+    terminal.show();
+
+    vscode.window.showInformationMessage(`Compiling ${path.basename(doc.uri.fsPath)} in ${buildType} mode.`);
+  });
+
+  // Compile entire project command
+  const compileProjectCmd = vscode.commands.registerCommand('papyrusTools.compileProject', async () => {
+    const buildType = await vscode.window.showQuickPick(['Release', 'Debug'], { placeHolder: 'Choose build type for project compilation' });
+    if (!buildType) return;
+
+    const project = getActiveProject();
+    if (!project) {
+      vscode.window.showErrorMessage('No active project configured. Run the Setup Wizard first.');
+      return;
+    }
+
+    const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const game = getGame();
+    const settings = getMergedGameConfig(cfg, game);
+    const compilerPath = settings.compiler.path;
+    if (!compilerPath || !fs.existsSync(compilerPath)) {
+      vscode.window.showErrorMessage(`Compiler not found for ${game}. Configure paths first.`);
+      return;
+    }
+
+    // Find all .psc files in project namespace
+    const pscFiles: string[] = [];
+    const walk = (dir: string) => {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const ent of entries) {
+          const full = path.join(dir, ent.name);
+          if (ent.isDirectory()) {
+            if (ent.name !== 'node_modules' && !ent.name.startsWith('.')) {
+              walk(full);
+            }
+          } else if (ent.isFile() && /\.psc$/i.test(ent.name)) {
+            pscFiles.push(full);
+          }
+        }
+      } catch {}
+    };
+    walk(project.namespace);
+
+    if (pscFiles.length === 0) {
+      vscode.window.showInformationMessage('No .psc files found in the project.');
+      return;
+    }
+
+    const flags: string[] = [];
+    if (buildType === 'Release') flags.push('-optimize');
+    if (buildType === 'Debug') flags.push('-debug');
+    if (game === 'Starfield') flags.push('-sf');
+
+    const scriptPaths = [project.namespace, ...settings.scriptPaths.filter(p => p !== project.namespace)];
+    const includeArg = `-i="${scriptPaths.join(';')}"`;
+
+    const terminal = vscode.window.createTerminal({ name: `Papyrus Compile Project (${game})`, cwd: project.namespace });
+
+    for (const pscFile of pscFiles) {
+      const relativeDir = path.relative(project.namespace, path.dirname(pscFile));
+      const outputDir = path.join(project.outputDir, relativeDir);
+      const outputArg = `-o="${outputDir}"`;
+      const args = [includeArg, outputArg, ...flags, pscFile];
+      const startProcessArgs = args.map(arg => `"${arg.replace(/"/g, '""')}"`).join(', ');
+      const powershellCommand = `Start-Process -FilePath "${compilerPath.replace(/"/g, '""')}" -ArgumentList ${startProcessArgs} -NoNewWindow -Wait`;
+      terminal.sendText(powershellCommand);
+    }
+
+    terminal.show();
+    vscode.window.showInformationMessage(`Compiling ${pscFiles.length} files in ${project.name} project (${buildType} mode).`);
   });
 
   // Configure script folders command: sets per-game include paths

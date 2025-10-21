@@ -59,14 +59,16 @@
 
 ## Compile smarter
 
-Use **`Papyrus: Compile Current File`** to open the interactive compiler flow:
+Use **`Papyrus: Compile Current File`** for one-click compilation of the active Papyrus file:
 
-- Pick the game profile (Skyrim / Fallout / Starfield) and confirm PapyrusCompiler.exe.
-- Curate script include paths, working directory, and additional flags with guardrails that prevent incompatible combinations.
-- Preview the full command before it is executed in a dedicated VS Code terminal.
-- Dragged-in fragment scripts automatically receive a fragment template (Extends `Quest` with staged fragment functions), while other files default to an `ObjectReference` starter script.
+- Choose between Release (-optimize) or Debug (-debug) build.
+- Automatically uses active project settings for compiler path, script includes, and output directory.
+- Maintains folder structure: compiled .pex files mirror the project layout in the output folder.
+- Starfield scripts automatically include -sf flag.
 
-> **Tip:** Enable `papyrusTools.compile.skipPrompts` in settings for streamlined compiles that use your current configuration without prompts.
+Use **`Papyrus: Compile Entire Project`** to compile all .psc files in the active project namespace with the same streamlined options.
+
+> **Tip:** Ensure an active project is set via the Setup Wizard for automatic path configuration.
 
 ## Workspace automation
 
@@ -97,7 +99,8 @@ Toggle these views from the Papyrus Tools activity icon or the standard Explorer
 
 | Command | Purpose |
 | --- | --- |
-| `Papyrus: Compile Current File` | Interactive launch of PapyrusCompiler.exe with profile, include, working directory, and flag management. |
+| `Papyrus: Compile Current File` | One-click compile of active .psc file with Release/Debug choice, using project settings. |
+| `Papyrus: Compile Entire Project` | Compile all .psc files in the active project namespace. |
 | `Papyrus: Switch Game Profile` | Swap between Skyrim, Fallout, and Starfield profiles and update compiler/script settings. |
 | `Papyrus: Configure Compiler Paths` / `Papyrus: Configure Script Folders` | Guided pickers that update per-game compiler locations and script search paths. |
 | `Papyrus: Setup Workspace Profile` | Wizard that records namespace/output directories and marks the active mod project. |
