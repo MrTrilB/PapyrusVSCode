@@ -66,6 +66,8 @@ Use **`Papyrus: Compile Current File`** to open the interactive compiler flow:
 - Preview the full command before it is executed in a dedicated VS Code terminal.
 - Dragged-in fragment scripts automatically receive a fragment template (Extends `Quest` with staged fragment functions), while other files default to an `ObjectReference` starter script.
 
+> **Tip:** Enable `papyrusTools.compile.skipPrompts` in settings for streamlined compiles that use your current configuration without prompts.
+
 ## Workspace automation
 
 - **Setup wizard** – `Papyrus: Setup Workspace Profile` captures namespace/output folders per project and persists them to `.vscode/settings.json` plus the `papyrusTools.Projects` setting for quick switching.

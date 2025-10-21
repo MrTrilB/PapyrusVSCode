@@ -433,6 +433,13 @@
             "description": "Projects capture workspace wizard results so Papyrus Tools can re-surface saved namespaces when switching contexts.",
             "markdownDescription": "Projects capture Workspace Wizard results so Papyrus Tools can re-surface saved namespaces when switching contexts.",
             "order": 0.75
+          },
+          "papyrusTools.compile.skipPrompts": {
+            "type": "boolean",
+            "default": false,
+            "description": "Skip interactive prompts and compile directly using current settings.",
+            "markdownDescription": "Skip interactive prompts and compile directly using current settings.",
+            "order": 1
           }
         }
       },

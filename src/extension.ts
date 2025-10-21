@@ -6,7 +6,7 @@ import { GameProfile, GameProfileKey, SUPPORTED_GAMES, GAME_TO_PROFILE_KEY, PROF
 import { registerPapyrusCommandsView } from './papyrusSidebarView';
 import { GameSettingKeys, LEGACY_GAME_SETTING_KEYS, loadGameConfigurationKeys } from './configKeys';
 import { CompilerSettingsSnapshot } from './papyrusConfigTypes';
-import { runInteractiveCompile } from './interactiveCompileFlow';
+import { runInteractiveCompile, runDirectCompile } from './interactiveCompileFlow';
 import { runWorkspaceSetupWizard } from './workspaceSetup';
 import { ControlCenterPanel } from './controlCenterPanel';
 
@@ -1229,7 +1229,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  // Compile command using dedicated interactive flow
+  // Compile command using direct or interactive flow
   const compileCmd = vscode.commands.registerCommand('papyrusTools.compileFile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -1242,21 +1242,32 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    await doc.save();
-
     const cfg = vscode.workspace.getConfiguration('papyrusTools');
+    const skipPrompts = cfg.get<boolean>('compile.skipPrompts', false);
+
     const currentGame = getGame();
     const includeFlagSetting: string = cfg.get<string>('compiler.includeFlag') || '-i';
     const pathSeparatorSetting: string = cfg.get<string>('compiler.pathSeparator') || ';';
 
-    await runInteractiveCompile({
-      document: doc,
-      defaultGame: currentGame,
-      supportedGames: SUPPORTED_GAMES,
-      getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
-      includeFlag: includeFlagSetting,
-      pathSeparator: pathSeparatorSetting
-    });
+    if (skipPrompts) {
+      await runDirectCompile({
+        document: doc,
+        defaultGame: currentGame,
+        supportedGames: SUPPORTED_GAMES,
+        getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
+        includeFlag: includeFlagSetting,
+        pathSeparator: pathSeparatorSetting
+      });
+    } else {
+      await runInteractiveCompile({
+        document: doc,
+        defaultGame: currentGame,
+        supportedGames: SUPPORTED_GAMES,
+        getSettingsForGame: (game) => getMergedGameConfig(cfg, game),
+        includeFlag: includeFlagSetting,
+        pathSeparator: pathSeparatorSetting
+      });
+    }
   });
 
   // Configure script folders command: sets per-game include paths
