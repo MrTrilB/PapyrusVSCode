@@ -144,4 +144,55 @@ const mcpServerConfig = {
   }
 };
 
-module.exports = [extensionConfig, webviewConfig, mcpServerConfig];
+const webExtensionConfig = {
+  target: "webworker",
+  mode: "none",
+  entry: "./src/webExtension.ts",
+  output: {
+    path: path.resolve(__dirname, "out", "web"),
+    filename: "extension.js",
+    libraryTarget: "commonjs2",
+    devtoolModuleFilenameTemplate: "../../[resource-path]"
+  },
+  devtool: "source-map",
+  externals: {
+    vscode: "commonjs vscode"
+  },
+  resolve: {
+    extensions: [".ts", ".tsx", ".js", ".jsx"],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: [/node_modules\//, /src[\\\/]test[\\\/]?/],
+        use: [
+          {
+            loader: "ts-loader",
+            options: {
+              transpileOnly: false,
+              compilerOptions: {
+                module: "esnext"
+              }
+            }
+          }
+        ]
+      },
+      {
+        test: /\.js$/,
+        enforce: "pre",
+        use: [
+          {
+            loader: "source-map-loader"
+          }
+        ],
+        exclude: /node_modules\/@modelcontextprotocol/
+      }
+    ]
+  },
+  infrastructureLogging: {
+    level: "warn",
+  }
+};
+
+module.exports = [extensionConfig, webviewConfig, mcpServerConfig, webExtensionConfig];

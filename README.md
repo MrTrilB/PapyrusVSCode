@@ -1,190 +1,140 @@
-# Papyrus Tools
+# Papyrus Tools for VS Code
 
-Papyrus scripting support for Bethesda Creation Engine (Skyrim/FO4) scripts.
+![Papyrus Tools logo](./Assets/Images/PapyrusTools-LogoColour.png)
 
-Features:
-- Syntax highlighting (TextMate grammar)
-- Language configuration (comments/brackets)
-- Snippets for common constructs
-- Enhanced completions and hovers for keywords, built-in types, and indexed Starfield scripts/functions
-- Built-in Papyrus Index dataset (vanilla + extender APIs) for Skyrim, Fallout 4, and Starfield so completions and hovers work out of the box
-- Starfield script function completions (e.g. `Utility.GetCurrentGameTime`) when the Starfield profile is active
-- Document symbols (Outline) for functions/events/properties
-- Go to Definition within a file for functions/events
-- Basic diagnostics for If/EndIf and While/EndWhile balance
-- Command: "Papyrus: Compile Current File" with an interactive wizard for compiler path, include folders, working dir, and flags
- - Multi-game profiles (Skyrim/SE/AE, Fallout 4/76, Starfield)
- - Status bar profile selector and command "Papyrus: Switch Game Profile"
- - Per-game script folders and automatic include args for compiler
- - Script indexer powering Workspace Symbols and cross-script Go to Definition (best-effort)
-- Papyrus Tools activity bar view providing quick access to core commands
-- Fluent UI Control Center webview with sidebar navigation for workspace, compiler, and diagnostics forms
-- Workspace profile setup wizard to generate per-mod `.vscode/settings.json`
+Papyrus Tools delivers a modern authoring environment for Bethesda Creation Engine mods inside Visual Studio Code. Whether you are building Starfield quests, Fallout 4 gameplay tweaks, or Skyrim SE automation, the extension combines rich language intelligence with project automation so you can stay focused on your scripts.
 
-## Getting started
+## Feature overview
 
-- Open this folder in VS Code
-- Run `npm install` to get dev dependencies
-- Press F5 to launch an Extension Development Host
-- Open an example `.psc` file and try snippets like `scriptname`, `func`, `event`
+### Language intelligence
 
-### Configure compiler (optional)
+- Papyrus grammar, bracket rules, and snippets tuned for Bethesda scripting.
+- IntelliSense that blends the bundled Papyrus Index (vanilla + extender APIs) with your workspace sources for Skyrim, Fallout 4/76, and Starfield.
+- Rich hovers, document symbols, workspace symbols, cross-script definition fallbacks, and control-flow diagnostics for `If/EndIf` and `While/EndWhile`.
 
-Set the compiler path and args in settings:
+### Workflow automation & compilers
 
-- `papyrus.compiler.path`: Full path to PapyrusCompiler.exe
-- `papyrus.compiler.args`: Array of additional arguments (e.g. output folder)
-- `papyrus.compiler.cwd`: Working directory for the compiler (optional)
+- Interactive compile wizard with profile selection, include folders, working directory setup, and preset flag guardrails.
+- Per-game profiles with defaults, status bar switching, export/import, auto-detect, and the workspace setup wizard that scaffolds `.vscode/settings.json` for each mod.
+- Commands to configure compilers/script folders, rebuild the script index, and clear stored settings.
 
-> When you change the active game (status bar picker or the Settings UI), Papyrus Tools now seeds default script folders and compiler locations for that title automatically. Review the generated paths and adjust them if your installation lives elsewhere.
+### Control Center & project explorers
 
-Per-game overrides (recommended):
+- Fluent UI Control Center webview with quick access to compiler settings, diagnostics, and project management forms.
+- Dedicated “Project Folder” and “Output Folder” explorers featuring drag & drop, fragment-aware templates, and refresh/actions per view.
 
-- `papyrus.game`: Active game profile (Skyrim, Fallout, Starfield)
-- `papyrus.games.<profile>.compiler.path|args|cwd`: Per-game compiler config where `<profile>` is one of `skyrim|fallout|starfield`.
+### Desktop-only helpers vs. vscode.dev mode
 
-Switch profiles via the status bar or command "Papyrus: Switch Game Profile".
+- Desktop: full project automation, auto-detect prompts, file system explorers, fragment templates, and the Control Center dashboard.
+- Web: lightweight bundle delivering syntax, snippets, completions, hovers, symbols, definitions, and diagnostics directly in [vscode.dev](https://vscode.dev/), with desktop-only commands showing a friendly redirect message.
 
-Then run the command "Papyrus: Compile Current File" from the Command Palette or editor title. The wizard will:
+### Chat & integrations
 
-- Confirm the game profile and compiler executable to use
-- Let you curate include folders, working directory, and any extra compiler switches (with presets for common flags)
-- Preview the final PapyrusCompiler command before launching it in a dedicated terminal
+- GitHub Copilot Chat participant for Papyrus-specific help inside VS Code (desktop only).
+- Optional Model Context Protocol server (`src/mcpServer.ts`) to surface Papyrus utilities outside the editor.
 
-### Workspace setup wizard
+## Highlights
 
-Use "Papyrus: Setup Workspace Profile" on a mod workspace to scaffold `.vscode/settings.json` with Starfield compiler, namespace, and output folders. The walkthrough supports browsing for each directory, manual entry, or leaving optional values blank so every mod can keep its own isolated build configuration.
+- **Complete language tooling** – TextMate grammar, bracket matching, snippets, document symbols, and balanced control-flow diagnostics tailored to Papyrus.
+- **Context-aware IntelliSense** – Completions and hovers fuse the built-in Papyrus Index (extender APIs coming soon) with your workspace sources for Skyrim, Fallout 4/76, and Starfield.
+- **One-click compile wizard** – Launch PapyrusCompiler.exe with an interactive flow that confirms the game profile, include folders, working directory, and popular flags like `-optimize`, `-release`, or Starfield mode.
+- **Control Center dashboard** – Configure compiler paths, script folders, diagnostics, and per-game profiles through a Fluent UI webview without leaving VS Code.
+- **Project-aware explorer** – Manage mod assets from dedicated “Project Folder” and “Output Folder” views with drag & drop, quick create/delete, fragment templates, and automatic active-project detection.
+- **Game profile automation** – Auto-detect Steam/GOG/Epic installs, seed per-game defaults, export/import profiles, and switch between titles from the status bar.
 
-### Quick setup (Starfield / Fallout 4)
+## Quick start
 
-Use the command "Papyrus: Configure Compiler Paths" to quickly set the per-game compiler paths.
-Defaults used (you can edit them if your paths differ):
+1. **Install the extension** from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MrTrilB.papyrus-tools) or sideload the packaged `.vsix`.
+2. **Open your mod workspace** (or the provided `examples/` folder) and let Papyrus Tools activate automatically when a `.psc` file loads.
+3. **Run the Control Center** via `Papyrus: Open Control Center` to set compiler paths, namespace/output folders, and optional fragment directories. The wizard can scaffold `.vscode/settings.json` with the correct per-game configuration.
 
-- Starfield: `C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe`
-- Fallout 4: `C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe`
+> Tip: First-time users can run `Papyrus: Auto-Detect Game Paths` to populate compiler and script directories from common Steam, GOG, or Epic installs.
 
-### Script folders and indexing
+## Guided setup walkthroughs
 
-Set script folders to enable includes and richer IntelliSense (Papyrus Index data ships with the extension, and local folders layer on top):
+![Papyrus Tools setup wizard walkthrough](./Assets/Animations/PapyrusToolsSetupWizard.gif?raw=true)
 
-### Bundled resources
+![Papyrus Tools project wizard walkthrough](./Assets/Animations/PapyrusToolsProjectWizard.gif?raw=true)
 
-- `resources/Starfield/*`: Starfield vanilla, SFSE, and INI Manipulator API scripts
-- `resources/Fallout4/vanilla`: Fallout 4 vanilla API scripts
-- `resources/SkyrimSE/vanilla`: Skyrim SE/AE vanilla API scripts
+## Compile smarter
 
-Papyrus Tools loads these snapshots into the index on activation. Any script paths you configure are merged on top so local overrides win.
+Use **`Papyrus: Compile Current File`** to open the interactive compiler flow:
 
-- Per-game paths (recommended): `papyrus.games.<profile>.scriptPaths`
-- Include flag and separator: `papyrus.compiler.includeFlag` (default `-i`), `papyrus.compiler.pathSeparator` (default `;`)
+- Pick the game profile (Skyrim / Fallout / Starfield) and confirm PapyrusCompiler.exe.
+- Curate script include paths, working directory, and additional flags with guardrails that prevent incompatible combinations.
+- Preview the full command before it is executed in a dedicated VS Code terminal.
+- Dragged-in fragment scripts automatically receive a fragment template (Extends `Quest` with staged fragment functions), while other files default to an `ObjectReference` starter script.
 
-Commands:
+## Workspace automation
 
-- Papyrus: Configure Script Folders – prompts for Starfield/Fallout script directories
-- Papyrus: Add Script Folder – pick any folder to add to the active game profile
-- Papyrus: Rebuild Script Index – re-scan script folders to refresh symbols/definitions
-- Papyrus: Auto-Detect Game Paths – scans common Steam library locations for Skyrim, Fallout, and Starfield and offers to apply detected compiler/script paths
-- Papyrus: Open Control Center – launch the Fluent UI hub for workspace, compiler, and diagnostics helpers
-	 - Settings:
-		 - `papyrus.autoDetect.useLibraryFoldersVdf` (default true): parse Steam libraryfolders.vdf for extra libraries
-		 - `papyrus.autoDetect.additionalBasePaths`: add more library roots (provide library root, `steamapps`, or `steamapps/common`)
-		 - `papyrus.autoDetect.includeBothScriptPaths` (default false): when enabled, include both `Data\Scripts\Source` and `Data\Scripts` if both exist
-	 - Per-game checkboxes (default true):
-		 - `papyrus.autoDetect.enableSkyrim`, `papyrus.autoDetect.enableFallout`, `papyrus.autoDetect.enableStarfield`
-	 - Also probes typical GOG/Epic paths (games under these roots):
-		 - GOG: `C:\Program Files (x86)\GOG Galaxy\Games`, `C:\GOG Games`, `D:\GOG Games`, `E:\GOG Games`, `F:\GOG Games`
-		 - Epic: `C:\Program Files\Epic Games` (plus D/E/F variants)
+- **Setup wizard** – `Papyrus: Setup Workspace Profile` captures namespace/output folders per project and persists them to `.vscode/settings.json` plus the `papyrusTools.Projects` setting for quick switching.
+- **Profile management** – Export/import JSON profiles, create default profiles for all supported games, or mark a project as active so the tree views and compiler always target the right mod.
+- **Drag & drop project view** – Move, rename, or delete files/folders inside the “Project Folder” tree. New files created within a `Fragments` directory receive fragment-friendly boilerplate.
 
-### Commands
+## vscode.dev support
 
-- Papyrus: Compile Current File
-- Papyrus: Switch Game Profile
-- Papyrus: Configure Compiler Paths
-- Papyrus: Configure Script Folders
-- Papyrus: Add Script Folder
-- Papyrus: Setup Workspace Profile
-- Papyrus: Rebuild Script Index
- - Papyrus: Auto-Detect Game Paths
-- Papyrus: Open Control Center
- - Papyrus: Open Current Game Settings
- - Papyrus: Export Current Game Profile
- - Papyrus: Import Game Profile
- - Papyrus: Create Default Game Profiles
- - Papyrus: Clear Stored Settings
+Papyrus Tools now ships with a lightweight web extension so you can browse and review Papyrus scripts directly in [vscode.dev](https://vscode.dev/):
 
-Selecting a game from the dropdown or running "Papyrus: Switch Game Profile" applies the default compiler location and script include folders for that game, making first-time setup a single click.
+- ✅ Syntax highlighting, snippets, keywords, basic completions, hovers, document symbols, and in-file go-to-definition.
+- ✅ Control-flow diagnostics (If/EndIf, While/EndWhile) surfaced directly in the Problems panel.
+- ❌ Desktop-only helpers such as the Control Center, compiler wizard, auto-detect prompts, and project/file explorers. These commands display a friendly reminder to reopen the workspace in the desktop app when invoked online.
 
-## Per-game settings examples
+When you're ready to compile or manage mod assets, open the same repository in the desktop version of VS Code and Papyrus Tools will unlock the full toolchain automatically.
 
-### Exporting and importing profiles
+## Explorer views
 
-You can export your current game profile to JSON and re-import later or on another machine.
+Papyrus Tools adds two activity-bar views:
 
-- Export: "Papyrus: Export Current Game Profile" creates a file like `papyrus-profile-<Game>.json` containing:
-	- `game`, `scriptPaths`, `compiler` (path|args|cwd), `includeFlag`, `pathSeparator`
-- Import: "Papyrus: Import Game Profile" merges that JSON into `papyrus.games.<profile>` and updates top-level convenience settings when applicable (Starfield/Fallout 4/Skyrim).
-	- Optionally sets the imported game as the active profile.
-	- Rebuilds the index after applying changes.
+- **Project Folder** – Shows the active project namespace directory (hiding `.vscode`). Supports drag & drop, context menus for new files/folders, fragment-aware templates, and quick refresh.
+- **Output Folder** – Mirrors the configured output directory so you can inspect generated `.pex` artifacts without leaving VS Code.
 
-	### Default profiles
+Toggle these views from the Papyrus Tools activity icon or the standard Explorer pane.
 
-	Use "Papyrus: Create Default Game Profiles" to seed sensible starting paths and compiler locations for all supported games. These are typical Steam-based defaults (they may not exist on your machine), and are merged with your current settings and top-level per-game convenience settings.
+## Commands reference
 
-The following convenience settings are merged with `papyrus.games.*` and global defaults.
+| Command | Purpose |
+| --- | --- |
+| `Papyrus: Compile Current File` | Interactive launch of PapyrusCompiler.exe with profile, include, working directory, and flag management. |
+| `Papyrus: Switch Game Profile` | Swap between Skyrim, Fallout, and Starfield profiles and update compiler/script settings. |
+| `Papyrus: Configure Compiler Paths` / `Papyrus: Configure Script Folders` | Guided pickers that update per-game compiler locations and script search paths. |
+| `Papyrus: Setup Workspace Profile` | Wizard that records namespace/output directories and marks the active mod project. |
+| `Papyrus: Auto-Detect Game Paths` | Scans Steam/GOG/Epic libraries for supported games and offers to apply detected paths. |
+| `Papyrus: Rebuild Script Index` | Re-scan local sources and bundled APIs for improved completions, hovers, and Go to Definition. |
+| `Papyrus: Open Control Center` | Launch the Fluent UI dashboard for compiler, workspace, diagnostics, and chat integrations. |
+| Project tree commands (`Add File`, `Add Folder`, `Delete File/Folder`) | Create or remove Papyrus assets directly from the explorer views with fragments-aware templates. |
 
-Example: Starfield
+> A full list of commands appears under **Papyrus Tools** in the VS Code Command Palette (`Ctrl+Shift+P`).
 
-```
-{
-	"papyrus.starfield": {
-		"scriptPaths": [
-			"C:\\SteamLibrary\\steamapps\\common\\Starfield\\Data\\Scripts\\Source"
-		],
-		"compiler": {
-			"path": "C:\\SteamLibrary\\steamapps\\common\\Starfield\\Tools\\Papyrus Compiler\\PapyrusCompiler.exe",
-			"args": [],
-			"cwd": ""
-		}
-	}
-}
-```
+## Requirements
 
-Example: Fallout
+- Visual Studio Code **1.91.0 or newer** (stable or Insiders).
+- Windows is required for compilation features (PapyrusCompiler.exe is Windows-only). Syntax intelligence and the Papyrus Index also work on macOS/Linux for reading scripts.
+- PapyrusCompiler.exe shipped with Skyrim, Fallout 4/76, or Starfield Creation Kit installs.
 
-```
-{
-	"papyrus.Fallout": {
-		"scriptPaths": [
-			"C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Data\\Scripts\\Source"
-		],
-		"compiler": {
-			"path": "C:\\SteamLibrary\\steamapps\\common\\Fallout 4\\Papyrus Compiler\\PapyrusCompiler.exe",
-			"args": [],
-			"cwd": ""
-		}
-	}
-}
-```
+## Marketplace assets
 
-Example: Skyrim/SE/AE
+- **Extension icon:** `Assets/Images/PapyrusTools.png` (square PNG, optimized for marketplace listing & VS Code activity bar). The same artwork powers the activity icon via `Assets/Images/PapyrusTools.svg`.
+- **Optional hero imagery:** capture screenshots of the Control Center or project tree and place them under `Assets/Images/` for inclusion in the marketplace gallery.
 
-```
-{
-	"papyrus.skyrim": {
-		"scriptPaths": [
-			"C:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Data\\Scripts\\Source"
-		],
-		"compiler": {
-			"path": "C:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Papyrus Compiler\\PapyrusCompiler.exe",
-			"args": [],
-			"cwd": ""
-		}
-	}
-}
-```
+## Troubleshooting & feedback
+
+- File an issue or feature request on [GitHub Issues](https://github.com/MrTrilB/PapyrusVSCode/issues).
+- Review the built-in `Papyrus: Scan Scripts for Diagnostics` command to surface syntax problems.
+- For compiler launch problems, open the Control Center to verify the compiler path, include folders, and active profile.
+
+## Acknowledgements
+
+Huge thanks to [BellCubeDev](https://github.com/BellCubeDev/papyrus-index) for the Papyrus Index dataset powering Papyrus Tools IntelliSense.
 
 ## Contributing
-PRs welcome for expanded grammar, LSP features, and integration with Papyrus compiler.
+
+Pull requests are welcome! Popular areas include grammar improvements, new diagnostics, LSP features, and deeper integration with modding toolchains. Run the test suite before submitting:
+
+```powershell
+npm install
+npm run test
+```
 
 ## License
-MIT
+
+Papyrus Tools is released under the [MIT License](LICENSE).

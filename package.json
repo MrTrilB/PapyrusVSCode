@@ -6,12 +6,17 @@
   "publisher": "MrTrilB",
   "license": "MIT",
   "homepage": "https://trilb.dev/",
+  "icon": "Assets/Images/PapyrusTools-LogoColourSmall.png",
+  "pricing": "Free",
   "repository": {
     "type": "git",
     "url": "https://github.com/MrTrilB/PapyrusVSCode.git"
   },
   "bugs": {
     "url": "https://github.com/MrTrilB/PapyrusVSCode/issues"
+  },
+  "sponsor": {
+    "url": "https://github.com/sponsors/MrTrilB"
   },
   "engines": {
     "vscode": "^1.91.0",
@@ -23,7 +28,11 @@
     "Chat"
   ],
   "main": "./out/extension.js",
+  "browser": "./out/web/extension.js",
   "sideEffects": false,
+  "extensionKind": [
+    "workspace"
+  ],
   "activationEvents": [
     "onView:papyrus-tools-main",
     "onView:papyrus-tools-project-folder",
