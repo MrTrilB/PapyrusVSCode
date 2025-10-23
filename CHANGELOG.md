@@ -4,13 +4,11 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 
 ## [Unreleased]
 
-- Added a Projects tab to the Control Center overview with filtering, path shortcuts, and load/edit/delete actions for saved workspace projects.
-- Enabled Control Center to apply workspace projects to Papyrus settings and keep manifests in sync when projects are edited or removed.
-- Clarified fragment path messaging in the workspace wizard so authors know fragments are configured per project.
-- Added a web worker bundle so Papyrus Tools offers syntax helpers on vscode.dev while surfacing desktop-only command reminders.
-- Scoped web-only placeholder commands to vscode.dev so the desktop extension no longer logs duplicate registration warnings.
-- Documented vscode.dev support, refreshed the README hero image, and embedded animated walkthroughs for the setup and project wizards.
-- Declared the marketplace icon in package.json so the extension gallery displays the Papyrus Tools branding.
+## [0.1.47] - 2025-10-23
+
+- Fixed multi-selection delete functionality in the project folder tree view to properly handle deleting multiple selected files and folders via both context menu and keyboard shortcuts.
+- Temporarily disabled all compile functionality across the extension (command palette, UI buttons, MCP server tools, and control center) to prevent compilation operations while preserving other Papyrus development features.
+- Added a new fragment snippet template for TopicInfo fragments with proper autocast sections, code blocks, and property declarations based on Bethesda game fragment structure.
 
 ## [0.1.27] - 2025-10-12
 

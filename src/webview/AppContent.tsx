@@ -36,7 +36,7 @@ import type { CheckboxOnChangeData, SelectOnChangeData } from '@fluentui/react-c
 import { getPapyrusTheme, PapyrusThemeMode } from './PapyrusFluentUITheme';
 import logoSvg from './images/Papyrus Tools - Logo Colour.svg';
 
-type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'compiler' | 'debugging' | 'commands' | 'projects' | 'mcpServer';
+type SectionKey = 'overview' | 'setupWizard' | 'workspace' | 'debugging' | 'commands' | 'projects' | 'mcpServer';
 
 declare global {
   interface Window {
@@ -2685,42 +2685,6 @@ const WorkspaceContent: React.FC<WorkspaceContentProps> = ({ activeProject, onNa
   );
 };
 
-const CompilerContent: React.FC = () => {
-  const [compilerPath, setCompilerPath] = React.useState('');
-  const [scriptPath, setScriptPath] = React.useState('');
-  const [namespace, setNamespace] = React.useState('');
-  const [outputPath, setOutputPath] = React.useState('');
-
-  const styles = useStyles();
-
-  return (
-    <div className={styles.sectionGrid}>
-      <div>
-        <Text weight="semibold">Compiler Configuration</Text>
-        <Text size={200} className={styles.mutedText}>Configure Papyrus compiler inputs and output locations.</Text>
-      </div>
-      <div className={styles.sectionGridTight}>
-        <Field label="Compiler Executable" required>
-          <Input value={compilerPath} onChange={(_, data) => setCompilerPath(data.value)} placeholder="C:/Program Files/Starfield/Tools/Papyrus Compiler/PapyrusCompiler.exe" />
-        </Field>
-        <Field label="Script Source Directory" required>
-          <Input value={scriptPath} onChange={(_, data) => setScriptPath(data.value)} placeholder="C:/Program Files/Starfield/Data/Scripts/Source" />
-        </Field>
-        <Field label="Namespace / Working Directory">
-          <Input value={namespace} onChange={(_, data) => setNamespace(data.value)} placeholder="Data/Scripts/Source/MyMod" />
-        </Field>
-        <Field label="Output Directory">
-          <Input value={outputPath} onChange={(_, data) => setOutputPath(data.value)} placeholder="Data/Scripts/Compiled" />
-        </Field>
-      </div>
-      <div className={styles.buttonRow}>
-        <Button appearance="secondary">Clear</Button>
-        <Button appearance="primary">Apply Compiler Settings</Button>
-      </div>
-    </div>
-  );
-};
-
 const DebuggingContent: React.FC = () => {
   const styles = useStyles();
   const [scanStatus, setScanStatus] = React.useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
@@ -3069,9 +3033,7 @@ const CommandsContent: React.FC = () => {
   const styles = useStyles();
 
   const commands = [
-    { id: 'papyrusTools.compileFile', title: 'Compile Current File', description: 'Compile the currently active Papyrus script file.' },
     { id: 'papyrusTools.switchGame', title: 'Switch Game Profile', description: 'Change the active game profile (Starfield, Fallout 4, Skyrim).' },
-    { id: 'papyrusTools.configureCompilers', title: 'Configure Compiler Paths', description: 'Set up paths to Papyrus compiler executables for each game.' },
     { id: 'papyrusTools.configureScriptFolders', title: 'Configure Script Folders', description: 'Configure source script directories for each game.' },
     { id: 'papyrusTools.rebuildIndex', title: 'Rebuild Script Index', description: 'Rebuild the internal script index for cross-script references.' },
     { id: 'papyrusTools.addScriptFolder', title: 'Add Script Folder', description: 'Add a new script folder to the current game configuration.' },
@@ -3139,11 +3101,6 @@ const McpServerContent: React.FC = () => {
   const [serverStatus, setServerStatus] = React.useState<'running' | 'stopped' | 'starting' | 'stopping'>('running');
 
   const mcpTools = [
-    {
-      name: 'compile_file',
-      description: 'Compile a Papyrus script file',
-      parameters: 'filePath: string (path to the .psc file to compile)'
-    },
     {
       name: 'switch_game',
       description: 'Switch the active game profile',
@@ -3349,7 +3306,7 @@ const McpServerContent: React.FC = () => {
           <Text weight="semibold">Available Tools</Text>
         </div>
         <Text size={200} className={styles.mutedText}>
-          These tools are available in GitHub Copilot Chat when the MCP server is active. Use them with commands like "/compile_file" or "/switch_game".
+          These tools are available in GitHub Copilot Chat when the MCP server is active. Use them with commands like "/switch_game" or "/get_game_config".
         </Text>
         <div className={styles.sectionGridTight}>
           {mcpTools.map(tool => (
@@ -3391,7 +3348,6 @@ const McpServerContent: React.FC = () => {
               Use slash commands in Copilot Chat to access tools:
             </Text>
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li><Text size={200}>/compile_file - Compile the current Papyrus file</Text></li>
               <li><Text size={200}>/switch_game starfield - Switch to Starfield profile</Text></li>
               <li><Text size={200}>/get_game_config - View current settings</Text></li>
               <li><Text size={200}>/rebuild_index - Refresh script index</Text></li>
@@ -3602,9 +3558,6 @@ const AppContent: React.FC = () => {
     case 'workspace':
       mainContent = <WorkspaceContent activeProject={activeProject} onNavigate={handleNavigate} />;
       break;
-    case 'compiler':
-      mainContent = <CompilerContent />;
-      break;
     case 'debugging':
       mainContent = <DebuggingContent />;
       break;
@@ -3677,7 +3630,6 @@ const AppContent: React.FC = () => {
             {selected === 'overview' && 'Control Centre'}
             {selected === 'setupWizard' && 'Setup Wizard'}
             {selected === 'workspace' && 'Project Setup'}
-            {selected === 'compiler' && 'Compiler Settings'}
             {selected === 'debugging' && 'Troubleshooting & Debugging'}
             {selected === 'commands' && 'Papyrus Tools Commands'}
             {selected === 'mcpServer' && 'MCP Server Integration'}
@@ -3687,7 +3639,6 @@ const AppContent: React.FC = () => {
             {selected === 'overview' && 'Access quick actions, workspace status, and project shortcuts.'}
             {selected === 'setupWizard' && 'Run the guided setup to establish paths and profiles for your modding tools.'}
             {selected === 'workspace' && 'Provide project metadata to tailor Papyrus helpers to this mod.'}
-            {selected === 'compiler' && 'Manage compiler inputs, outputs, and namespaces for Papyrus builds.'}
             {selected === 'debugging' && 'Configure how Papyrus Tools scans and reports issues across scripts.'}
             {selected === 'commands' && 'Complete reference of all available Papyrus Tools commands with descriptions and direct execution.'}
             {selected === 'mcpServer' && 'Monitor MCP server status and view available tools for GitHub Copilot Chat integration.'}

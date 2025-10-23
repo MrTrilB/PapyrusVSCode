@@ -6,7 +6,6 @@ import { GameProfile, GameProfileKey, SUPPORTED_GAMES, GAME_TO_PROFILE_KEY, PROF
 import { registerPapyrusCommandsView } from './papyrusSidebarView';
 import { GameSettingKeys, LEGACY_GAME_SETTING_KEYS, loadGameConfigurationKeys } from './configKeys';
 import { CompilerSettingsSnapshot } from './papyrusConfigTypes';
-import { runInteractiveCompile, runDirectCompile } from './interactiveCompileFlow';
 import { runWorkspaceSetupWizard } from './workspaceSetup';
 import { ControlCenterPanel } from './controlCenterPanel';
 
@@ -138,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
   projectStatus.name = 'Papyrus Active Project';
   projectStatus.command = 'papyrusTools.switchProject';
   const updateProjectStatus = () => {
-    const activeProjectName = getActiveProjectName();
+    const activeProjectName = getActiveProject()?.name;
     if (activeProjectName) {
       projectStatus.text = `$(folder) ${activeProjectName}`;
       projectStatus.tooltip = 'Switch active Papyrus project';
@@ -1261,16 +1260,22 @@ export function activate(context: vscode.ExtensionContext) {
     const flags: string[] = [];
     if (buildType === 'Release') flags.push('-optimize');
     if (buildType === 'Debug') flags.push('-debug');
-    if (game === 'Starfield') flags.push('-sf');
 
-    const scriptPaths = [project.namespace, ...settings.scriptPaths.filter(p => p !== project.namespace)];
+    const extensionResourcePath = path.join(resourcesRoot, game.toLowerCase(), 'vanilla');
+    const scriptPaths = [project.namespace, extensionResourcePath, ...settings.scriptPaths.filter(p => p !== project.namespace)].filter(p => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    });
     const includeArg = `-i="${scriptPaths.join(';')}"`;
 
     const relativeDir = path.relative(project.namespace, path.dirname(doc.uri.fsPath));
     const outputDir = path.join(project.outputDir, relativeDir);
     const outputArg = `-o="${outputDir}"`;
 
-    const args = [includeArg, outputArg, ...flags, doc.uri.fsPath];
+    const args = [doc.uri.fsPath, includeArg, outputArg, ...flags];
     const cwd = path.dirname(doc.uri.fsPath);
 
     const startProcessArgs = args.map(arg => `"${arg.replace(/"/g, '""')}"`).join(', ');
@@ -1330,9 +1335,15 @@ export function activate(context: vscode.ExtensionContext) {
     const flags: string[] = [];
     if (buildType === 'Release') flags.push('-optimize');
     if (buildType === 'Debug') flags.push('-debug');
-    if (game === 'Starfield') flags.push('-sf');
 
-    const scriptPaths = [project.namespace, ...settings.scriptPaths.filter(p => p !== project.namespace)];
+    const extensionResourcePath = path.join(resourcesRoot, game.toLowerCase(), 'vanilla');
+    const scriptPaths = [project.namespace, extensionResourcePath, ...settings.scriptPaths.filter(p => p !== project.namespace)].filter(p => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    });
     const includeArg = `-i="${scriptPaths.join(';')}"`;
 
     const terminal = vscode.window.createTerminal({ name: `Papyrus Compile Project (${game})`, cwd: project.namespace });
@@ -1341,7 +1352,7 @@ export function activate(context: vscode.ExtensionContext) {
       const relativeDir = path.relative(project.namespace, path.dirname(pscFile));
       const outputDir = path.join(project.outputDir, relativeDir);
       const outputArg = `-o="${outputDir}"`;
-      const args = [includeArg, outputArg, ...flags, pscFile];
+      const args = [pscFile, includeArg, outputArg, ...flags];
       const startProcessArgs = args.map(arg => `"${arg.replace(/"/g, '""')}"`).join(', ');
       const powershellCommand = `Start-Process -FilePath "${compilerPath.replace(/"/g, '""')}" -ArgumentList ${startProcessArgs} -NoNewWindow -Wait`;
       terminal.sendText(powershellCommand);
@@ -2047,6 +2058,92 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(`Switched to project: ${pick.project.name}`);
   });
 
+  // Create new script command
+  const createNewScriptCmd = vscode.commands.registerCommand('papyrusTools.createNewScript', async () => {
+    const project = getActiveProject();
+    if (!project) {
+      vscode.window.showErrorMessage('No active project configured. Run the Setup Wizard first.');
+      return;
+    }
+
+    const scriptName = await vscode.window.showInputBox({
+      title: 'Create New Papyrus Script',
+      prompt: 'Enter the script name (without namespace prefix)',
+      value: 'MyScript',
+      placeHolder: 'e.g., MyScript'
+    });
+
+    if (!scriptName || !scriptName.trim()) return;
+
+    const trimmedName = scriptName.trim();
+    
+    // Extract parent namespace from namespace path
+    // Path format: .../Scripts/Source/{ParentNamespace}/{ProjectName}/...
+    const namespaceDir = project.namespace;
+    const scriptsSourceIndex = namespaceDir.indexOf('Scripts\\Source\\');
+    let baseNamespace = project.name;
+    
+    if (scriptsSourceIndex !== -1) {
+      const pathAfterSource = namespaceDir.substring(scriptsSourceIndex + 'Scripts\\Source\\'.length);
+      const pathParts = pathAfterSource.split('\\').filter(part => part && part !== '.');
+      if (pathParts.length >= 2) {
+        // pathParts[0] is parent namespace (e.g., "TrilB"), pathParts[1] is project name (e.g., "Mod01")
+        baseNamespace = pathParts[0] + ':' + pathParts[1];
+      }
+    }
+    
+    const fullScriptName = `${baseNamespace}:${trimmedName}`;
+    const fileName = trimmedName.replace(/:/g, '') + '.psc';
+    const filePath = path.join(project.namespace, fileName);
+
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      vscode.window.showErrorMessage(`Script file already exists: ${fileName}`);
+      return;
+    }
+
+    // Create the basic script template
+    const template = `ScriptName ${fullScriptName} extends Quest
+
+; ${fullScriptName}
+; Auto-generated Papyrus script template
+; Customize this script as needed
+
+; Properties
+Actor Property PlayerRef Auto
+
+; Events
+Event OnInit()
+    ; Initialization code here
+EndEvent
+
+; Functions
+Function MyFunction()
+    ; Function implementation
+EndFunction
+`;
+
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Write the file
+      fs.writeFileSync(filePath, template, 'utf8');
+
+      // Open the file in editor
+      const uri = vscode.Uri.file(filePath);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc);
+
+      vscode.window.showInformationMessage(`Created new script: ${fileName}`);
+    } catch (error: any) {
+      vscode.window.showErrorMessage(`Failed to create script: ${error?.message || error}`);
+    }
+  });
+
   // React to configuration changes
   const cfgChange = vscode.workspace.onDidChangeConfiguration(async e => {
   if (e.affectsConfiguration('papyrusTools.defaultGame')) {
@@ -2372,6 +2469,7 @@ Try using one of the specific commands above, or ask me directly about Papyrus s
     definitionProvider,
   workspaceSymbols,
     compileCmd,
+    compileProjectCmd,
   rebuildIndexCmd,
   addScriptFolderCmd,
     configureScriptFoldersCmd,
@@ -2383,6 +2481,7 @@ Try using one of the specific commands above, or ask me directly about Papyrus s
     autoDetectCmd,
     switchGameCmd,
     switchProjectCmd,
+    createNewScriptCmd,
     cfgChange,
     gameStatus,
     projectStatus,

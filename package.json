@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support for Bethesda games: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.27",
+  "version": "0.1.47",
   "publisher": "MrTrilB",
   "license": "MIT",
   "homepage": "https://trilb.dev/",
@@ -37,8 +37,6 @@
     "onView:papyrus-tools-main",
     "onView:papyrus-tools-project-folder",
     "onView:papyrus-tools-output-folder",
-    "onCommand:papyrusTools.compileFile",
-    "onCommand:papyrusTools.compileProject",
     "onCommand:papyrusTools.switchGame",
     "onCommand:papyrusTools.configureCompilers",
     "onCommand:papyrusTools.configureScriptFolders",
@@ -92,16 +90,6 @@
     ],
     "commands": [
       {
-        "command": "papyrusTools.compileFile",
-        "title": "Papyrus: Compile Current File",
-        "icon": "$(tools)"
-      },
-      {
-        "command": "papyrusTools.compileProject",
-        "title": "Papyrus: Compile Entire Project",
-        "icon": "$(tools)"
-      },
-      {
         "command": "papyrusTools.switchGame",
         "title": "Papyrus: Switch Game Profile",
         "icon": "$(game)"
@@ -110,6 +98,11 @@
         "command": "papyrusTools.switchProject",
         "title": "Papyrus: Switch Project",
         "icon": "$(project)"
+      },
+      {
+        "command": "papyrusTools.createNewScript",
+        "title": "Papyrus: Create New Script",
+        "icon": "$(add)"
       },
       {
         "command": "papyrusTools.openControlCenter",
@@ -190,14 +183,34 @@
         "icon": "$(new-folder)"
       },
       {
-        "command": "papyrusTools.deleteFileFromProject",
-        "title": "Delete File",
+        "command": "papyrusTools.deleteItemsFromProject",
+        "title": "Delete",
         "icon": "$(trash)"
       },
       {
-        "command": "papyrusTools.deleteFolderFromProject",
-        "title": "Delete Folder",
-        "icon": "$(trash)"
+        "command": "papyrusTools.revealInFileExplorer",
+        "title": "Reveal in File Explorer",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "papyrusTools.addFileToChat",
+        "title": "Add to Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "papyrusTools.copyPath",
+        "title": "Copy Path",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "papyrusTools.renameFile",
+        "title": "Rename",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "papyrusTools.debugFile",
+        "title": "Debug File",
+        "icon": "$(debug-alt)"
       }
     ],
     "menus": {
@@ -266,27 +279,47 @@
           "group": "7_modification@2"
         },
         {
-          "command": "papyrusTools.deleteFileFromProject",
-          "when": "view == papyrus-tools-project-folder && viewItem == papyrusFile",
+          "command": "papyrusTools.deleteItemsFromProject",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
           "group": "7_modification@3"
         },
         {
-          "command": "papyrusTools.deleteFolderFromProject",
-          "when": "view == papyrus-tools-project-folder && viewItem == papyrusDirectory",
-          "group": "7_modification@4"
+          "command": "papyrusTools.revealInFileExplorer",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
+          "group": "8_navigation@1"
+        },
+        {
+          "command": "papyrusTools.addFileToChat",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
+          "group": "8_navigation@2"
+        },
+        {
+          "command": "papyrusTools.copyPath",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
+          "group": "8_navigation@3"
+        },
+        {
+          "command": "papyrusTools.renameFile",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
+          "group": "7_modification@5"
+        },
+        {
+          "command": "papyrusTools.debugFile",
+          "when": "view == papyrus-tools-project-folder && (viewItem == papyrusFile || viewItem == papyrusDirectory)",
+          "group": "9_debug@1"
         }
       ],
       "commandPalette": [
-        {
-          "command": "papyrusTools.compileFile",
-          "when": "true"
-        },
         {
           "command": "papyrusTools.switchGame",
           "when": "true"
         },
         {
           "command": "papyrusTools.switchProject",
+          "when": "true"
+        },
+        {
+          "command": "papyrusTools.createNewScript",
           "when": "true"
         },
         {
@@ -378,6 +411,13 @@
             "description": "Help debug Papyrus scripts"
           }
         ]
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "papyrusTools.deleteItemsFromProject",
+        "key": "delete",
+        "when": "focusedView == papyrus-tools-project-folder && papyrusTools.hasSelection"
       }
     ],
     "configuration": [

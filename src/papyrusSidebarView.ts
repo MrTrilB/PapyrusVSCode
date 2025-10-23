@@ -6,7 +6,7 @@ class PapyrusMainWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'papyrus-tools-main';
   private _webviewView?: vscode.WebviewView;
 
-  constructor(private readonly _extensionUri: vscode.Uri) {}
+  constructor(private readonly _extensionUri: vscode.Uri, private readonly _projectProvider?: PapyrusProjectProvider) {}
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -46,6 +46,26 @@ class PapyrusMainWebviewProvider implements vscode.WebviewViewProvider {
             break;
           case 'switchGame':
             await vscode.commands.executeCommand('papyrusTools.switchGame');
+            break;
+          case 'compileAllProjectFiles':
+            await vscode.commands.executeCommand('papyrusTools.compileProject');
+            break;
+          case 'debugActiveProject':
+            // Send debug request to GitHub Copilot Chat for the entire project
+            const activeProject = this._projectProvider?.getActiveProject();
+            if (!activeProject?.namespaceDir) {
+              vscode.window.showErrorMessage('No active project configured. Please set up a project first.');
+              break;
+            }
+            const debugProjectMessage = `Please help me debug this Papyrus project located at: ${activeProject.namespaceDir}. Can you analyze all the scripts and identify any potential issues or improvements?`;
+            try {
+              await vscode.commands.executeCommand('workbench.action.chat.open', { query: debugProjectMessage });
+            } catch (error) {
+              vscode.window.showInformationMessage(`Debug request for project prepared. Please paste this into GitHub Copilot Chat: ${debugProjectMessage}`);
+            }
+            break;
+          case 'switchActiveProject':
+            await vscode.commands.executeCommand('papyrusTools.switchProject');
             break;
           case 'openQuickStart':
             // Handle quick start guide opening
@@ -153,8 +173,8 @@ function getNonce() {
 
 // File/directory items for project browsing
 class PapyrusFileItem extends vscode.TreeItem {
-  constructor(public readonly uri: vscode.Uri, public readonly isDirectory: boolean) {
-    super(path.basename(uri.fsPath), isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+  constructor(public readonly uri: vscode.Uri, public readonly isDirectory: boolean, isRoot: boolean = false) {
+    super(path.basename(uri.fsPath), isDirectory ? (isRoot ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     this.resourceUri = uri;
     this.iconPath = vscode.ThemeIcon.File;
     this.contextValue = isDirectory ? 'papyrusDirectory' : 'papyrusFile';
@@ -402,7 +422,7 @@ class PapyrusProjectProvider extends PapyrusCommandsProvider implements vscode.T
       const activeProject = this.getActiveProject();
       if (activeProject?.namespaceDir) {
         const uri = vscode.Uri.file(activeProject.namespaceDir);
-        return [new PapyrusFileItem(uri, true)];
+        return [new PapyrusFileItem(uri, true, true)]; // Pass true for isRoot to expand it
       } else {
         return [new PapyrusDummyItem('No project directory configured', 'Use Control Center to set up a project', 'warning')];
       }
@@ -439,9 +459,9 @@ class PapyrusOutputProvider extends PapyrusCommandsProvider {
 }
 
 export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) => {
-  const mainProvider = new PapyrusMainWebviewProvider(context.extensionUri);
   const projectProvider = new PapyrusProjectProvider();
   const outputProvider = new PapyrusOutputProvider();
+  const mainProvider = new PapyrusMainWebviewProvider(context.extensionUri, projectProvider);
 
   // Register webview provider for main view
   const mainRegistration = vscode.window.registerWebviewViewProvider(PapyrusMainWebviewProvider.viewType, mainProvider);
@@ -454,12 +474,20 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
   const projectView = vscode.window.createTreeView('papyrus-tools-project-folder', {
     treeDataProvider: projectProvider,
     showCollapseAll: true,
+    canSelectMany: true,
     dragAndDropController: projectProvider
+  });
+
+  // Set context key when selection changes
+  projectView.onDidChangeSelection(e => {
+    const hasSelection = e.selection.length > 0;
+    vscode.commands.executeCommand('setContext', 'papyrusTools.hasSelection', hasSelection);
   });
 
   const outputView = vscode.window.createTreeView('papyrus-tools-output-folder', {
     treeDataProvider: outputProvider,
-    showCollapseAll: true
+    showCollapseAll: true,
+    canSelectMany: true
   });
 
   // Register view actions
@@ -521,10 +549,16 @@ export const registerPapyrusCommandsView = (context: vscode.ExtensionContext) =>
       // Create appropriate template based on location
       const scriptName = path.basename(finalFileName, '.psc');
       let template: string;
+      let fullScriptName: string;
 
       if (isInFragments) {
-        // Fragment script template
-        template = `ScriptName ${scriptName} Extends Quest
+        // Fragment script template - use full namespace:Fragment:scriptName format
+        const config = vscode.workspace.getConfiguration('papyrusTools');
+        const projects = config.get('Projects', []) as Array<{ name: string; namespace: string; active?: boolean }>;
+        const activeProject = projects.find(project => project.active === true);
+        const namespacePrefix = activeProject?.name || 'Namespace:ModNamespace';
+        fullScriptName = `${namespacePrefix}:Fragment:${scriptName}`;
+        template = `ScriptName ${fullScriptName} extends Quest
 
 ; Fragment script for quest functionality
 ; This script is attached to a quest and contains fragment functions
@@ -542,8 +576,33 @@ Function Fragment_2()
 EndFunction
 `;
       } else {
-        // Regular script template
-        template = `ScriptName ${scriptName} Extends ObjectReference
+        // Regular script template - calculate namespace based on relative path from project root
+        const config = vscode.workspace.getConfiguration('papyrusTools');
+        const projects = config.get('Projects', []) as Array<{ name: string; namespace: string; active?: boolean }>;
+        const activeProject = projects.find(project => project.active === true);
+        
+        // Extract parent namespace from namespaceDir path
+        // Path format: .../Scripts/Source/{ParentNamespace}/{ProjectName}/...
+        const namespaceDir = activeProject?.namespace || '';
+        const scriptsSourceIndex = namespaceDir.indexOf('Scripts\\Source\\');
+        let baseNamespace = activeProject?.name || 'Namespace';
+        
+        if (scriptsSourceIndex !== -1) {
+          const pathAfterSource = namespaceDir.substring(scriptsSourceIndex + 'Scripts\\Source\\'.length);
+          const pathParts = pathAfterSource.split('\\').filter(part => part && part !== '.');
+          if (pathParts.length >= 2) {
+            // pathParts[0] is parent namespace (e.g., "TrilB"), pathParts[1] is project name (e.g., "Mod01")
+            baseNamespace = pathParts[0] + ':' + pathParts[1];
+          }
+        }
+        
+        // Calculate relative path from project root to target directory
+        const relativePath = path.relative(activeProject?.namespace || '', targetDir);
+        const namespaceParts = relativePath ? relativePath.split(path.sep).filter(part => part && part !== '.') : [];
+        const namespaceSuffix = namespaceParts.length > 0 ? ':' + namespaceParts.join(':') : '';
+        
+        fullScriptName = `${baseNamespace}${namespaceSuffix}:${scriptName}`;
+        template = `ScriptName ${fullScriptName} extends ObjectReference
 
 ; Add your script logic here
 
@@ -602,14 +661,32 @@ EndFunction
     }
   });
 
-  const deleteFileCmd = vscode.commands.registerCommand('papyrusTools.deleteFileFromProject', async (item: PapyrusFileItem) => {
-    if (!item || item.isDirectory) {
+  const deleteItemsCmd = vscode.commands.registerCommand('papyrusTools.deleteItemsFromProject', async (itemOrItems?: PapyrusFileItem | PapyrusFileItem[]) => {
+    let items: PapyrusFileItem[];
+
+    if (itemOrItems) {
+      // Items passed directly (from context menu)
+      items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    } else {
+      // No items passed - get current selection from tree view
+      const selectedItems = projectView.selection;
+      items = selectedItems.filter(item => item instanceof PapyrusFileItem) as PapyrusFileItem[];
+    }
+
+    const validItems = items.filter(item => item);
+
+    if (validItems.length === 0) {
       return;
     }
 
-    const fileName = path.basename(item.uri.fsPath);
+    const itemNames = validItems.map(item => path.basename(item.uri.fsPath));
+    const isMultiple = validItems.length > 1;
+    const message = isMultiple
+      ? `Are you sure you want to delete ${validItems.length} selected items?`
+      : `Are you sure you want to delete "${itemNames[0]}"?`;
+
     const result = await vscode.window.showWarningMessage(
-      `Are you sure you want to delete "${fileName}"?`,
+      message,
       { modal: true },
       'Delete',
       'Cancel'
@@ -619,38 +696,155 @@ EndFunction
       return;
     }
 
-    try {
-      fs.unlinkSync(item.uri.fsPath);
-      projectProvider.refresh();
-      vscode.window.showInformationMessage(`File "${fileName}" deleted successfully`);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to delete file: ${error}`);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const item of validItems) {
+      try {
+        if (item.isDirectory) {
+          fs.rmSync(item.uri.fsPath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(item.uri.fsPath);
+        }
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        console.error(`Failed to delete ${item.uri.fsPath}:`, error);
+      }
+    }
+
+    projectProvider.refresh();
+
+    if (errorCount === 0) {
+      const successMessage = isMultiple
+        ? `${successCount} items deleted successfully`
+        : `"${itemNames[0]}" deleted successfully`;
+      vscode.window.showInformationMessage(successMessage);
+    } else if (successCount > 0) {
+      vscode.window.showWarningMessage(`${successCount} items deleted, ${errorCount} failed`);
+    } else {
+      vscode.window.showErrorMessage(`Failed to delete ${errorCount} items`);
     }
   });
 
-  const deleteFolderCmd = vscode.commands.registerCommand('papyrusTools.deleteFolderFromProject', async (item: PapyrusFileItem) => {
-    if (!item || !item.isDirectory) {
+  // Context menu commands
+  const revealInFileExplorerCmd = vscode.commands.registerCommand('papyrusTools.revealInFileExplorer', (itemOrItems: PapyrusFileItem | PapyrusFileItem[]) => {
+    const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    const validItems = items.filter(item => item);
+
+    if (validItems.length === 0) {
       return;
     }
 
-    const folderName = path.basename(item.uri.fsPath);
-    const result = await vscode.window.showWarningMessage(
-      `Are you sure you want to delete the folder "${folderName}" and all its contents?`,
-      { modal: true },
-      'Delete',
-      'Cancel'
-    );
+    // Reveal the first item (VS Code's revealFileInOS typically only works with one item)
+    const firstItem = validItems[0];
+    vscode.commands.executeCommand('revealFileInOS', firstItem.uri);
 
-    if (result !== 'Delete') {
+    if (validItems.length > 1) {
+      vscode.window.showInformationMessage(`Revealed ${firstItem.uri.fsPath} in file explorer (${validItems.length - 1} more selected)`);
+    }
+  });
+
+  const addFileToChatCmd = vscode.commands.registerCommand('papyrusTools.addFileToChat', async (itemOrItems: PapyrusFileItem | PapyrusFileItem[]) => {
+    const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    const validItems = items.filter(item => item && !item.isDirectory);
+
+    if (validItems.length === 0) {
       return;
     }
 
     try {
-      fs.rmSync(item.uri.fsPath, { recursive: true, force: true });
-      projectProvider.refresh();
-      vscode.window.showInformationMessage(`Folder "${folderName}" deleted successfully`);
+      if (validItems.length === 1) {
+        const item = validItems[0];
+        const fileName = path.basename(item.uri.fsPath);
+        await vscode.commands.executeCommand('workbench.action.chat.insertFile', item.uri);
+        vscode.window.showInformationMessage(`Added ${fileName} to chat`);
+      } else {
+        // Add multiple files to chat
+        for (const item of validItems) {
+          await vscode.commands.executeCommand('workbench.action.chat.insertFile', item.uri);
+        }
+        vscode.window.showInformationMessage(`Added ${validItems.length} files to chat`);
+      }
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to delete folder: ${error}`);
+      vscode.window.showErrorMessage(`Failed to add file(s) to chat: ${error}`);
+    }
+  });
+
+  const copyPathCmd = vscode.commands.registerCommand('papyrusTools.copyPath', async (itemOrItems: PapyrusFileItem | PapyrusFileItem[]) => {
+    const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    const validItems = items.filter(item => item);
+
+    if (validItems.length === 0) {
+      return;
+    }
+
+    if (validItems.length === 1) {
+      // Single item - copy just the path
+      const item = validItems[0];
+      await vscode.env.clipboard.writeText(item.uri.fsPath);
+      vscode.window.showInformationMessage('Path copied to clipboard');
+    } else {
+      // Multiple items - copy all paths separated by newlines
+      const paths = validItems.map(item => item.uri.fsPath);
+      await vscode.env.clipboard.writeText(paths.join('\n'));
+      vscode.window.showInformationMessage(`${validItems.length} paths copied to clipboard`);
+    }
+  });
+
+  const renameFileCmd = vscode.commands.registerCommand('papyrusTools.renameFile', async (item: PapyrusFileItem) => {
+    if (!item) return;
+
+    const currentName = path.basename(item.uri.fsPath);
+    const newName = await vscode.window.showInputBox({
+      prompt: 'Enter new name',
+      value: currentName,
+      placeHolder: 'New name'
+    });
+
+    if (!newName || newName === currentName) return;
+
+    const newPath = path.join(path.dirname(item.uri.fsPath), newName);
+    
+    try {
+      if (fs.existsSync(newPath)) {
+        vscode.window.showErrorMessage('A file or folder with that name already exists');
+        return;
+      }
+
+      fs.renameSync(item.uri.fsPath, newPath);
+      projectProvider.refresh();
+      vscode.window.showInformationMessage(`Renamed to ${newName}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to rename: ${error}`);
+    }
+  });
+
+  const debugFileCmd = vscode.commands.registerCommand('papyrusTools.debugFile', async (item: PapyrusFileItem) => {
+    if (!item || item.isDirectory) return;
+
+    const fileName = path.basename(item.uri.fsPath);
+    const activeProject = projectProvider.getActiveProject();
+
+    if (!activeProject?.namespaceDir) {
+      vscode.window.showErrorMessage('No active project configured. Please set up a project first.');
+      return;
+    }
+
+    // Check if the file is within the project directory
+    const relativePath = path.relative(activeProject.namespaceDir, item.uri.fsPath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      vscode.window.showErrorMessage('File is not within the active project directory.');
+      return;
+    }
+
+    // Send debug request to GitHub Copilot Chat with project context
+    const debugMessage = `Please help me debug this Papyrus file: ${fileName} (located in project: ${activeProject.namespaceDir}). Can you analyze the code and identify any potential issues?`;
+
+    try {
+      await vscode.commands.executeCommand('workbench.action.chat.open', { query: debugMessage });
+    } catch (error) {
+      vscode.window.showInformationMessage(`Debug request for ${fileName} prepared. Please paste this into GitHub Copilot Chat: ${debugMessage}`);
     }
   });
 
@@ -672,8 +866,12 @@ EndFunction
     refreshOutputCmd,
     addFileCmd,
     addFolderCmd,
-    deleteFileCmd,
-    deleteFolderCmd,
+    deleteItemsCmd,
+    revealInFileExplorerCmd,
+    addFileToChatCmd,
+    copyPathCmd,
+    renameFileCmd,
+    debugFileCmd,
     configChangeDisposable
   );
 

@@ -2,12 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Extension (Isolated - No Other Extensions)",
+            "name": "Run Extension (With GitHub Copilot)",
             "type": "extensionHost",
             "request": "launch",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",
-                "--disable-extensions"
+                "--enable-extension=GitHub.copilot",
+                "--enable-extension=GitHub.copilot-chat"
             ],
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "npm: webpack-dev"

@@ -3,7 +3,7 @@
     "scope": "papyrus",
     "prefix": "scriptname",
     "body": [
-      "ScriptName ${1:MyScript} extends ${2:Quest}",
+      "ScriptName ${1:Namespace}:${2:ModNamespace}:${3:ScriptName} extends ${4:Quest}",
       ""
     ],
     "description": "Declare script name and base type"
@@ -75,5 +75,32 @@
       "EndWhile"
     ],
     "description": "While loop"
+  },
+  "Fragment": {
+    "scope": "papyrus",
+    "prefix": "fragment",
+    "body": [
+      ";BEGIN FRAGMENT CODE - Do not edit anything between this and the end comment",
+      "Scriptname Fragments:${1:TopicInfos}:${2:TIF_}${3:ModPrefix}_${4:ScriptName} Extends ${5:TopicInfo} Hidden Const",
+      "",
+      ";BEGIN FRAGMENT Fragment_Begin",
+      "Function Fragment_Begin(ObjectReference akSpeakerRef)",
+      "Actor akSpeaker = akSpeakerRef as Actor",
+      ";BEGIN AUTOCAST TYPE ${6:QuestScriptType}",
+      "${6:QuestScriptType} kmyQuest = GetOwningQuest() as ${6:QuestScriptType}",
+      ";END AUTOCAST",
+      ";BEGIN CODE",
+      "${7:// fragment code}",
+      ";END CODE",
+      "EndFunction",
+      ";END FRAGMENT",
+      "",
+      ";END FRAGMENT CODE - Do not edit anything between this and the begin comment",
+      "",
+      "${8:GlobalVariable Property COM_AffinityLevel_3_Commitment Auto Const Mandatory}",
+      "",
+      "${9:ActorValue Property COM_StoryGatesCompleted Auto Const Mandatory}"
+    ],
+    "description": "TopicInfo fragment template with autocast and properties"
   }
 }

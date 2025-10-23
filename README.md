@@ -64,7 +64,6 @@ Use **`Papyrus: Compile Current File`** for one-click compilation of the active 
 - Choose between Release (-optimize) or Debug (-debug) build.
 - Automatically uses active project settings for compiler path, script includes, and output directory.
 - Maintains folder structure: compiled .pex files mirror the project layout in the output folder.
-- Starfield scripts automatically include -sf flag.
 
 Use **`Papyrus: Compile Entire Project`** to compile all .psc files in the active project namespace with the same streamlined options.
 

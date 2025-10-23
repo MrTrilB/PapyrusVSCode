@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "MrTrilB.papyrus-tools"
+        "MrTrilB.papyrus-tools",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
     ]
 }

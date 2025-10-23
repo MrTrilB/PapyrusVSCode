@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button, Text, makeStyles, tokens, FluentProvider } from '@fluentui/react-components';
-import { Settings20Regular, Play20Regular, Folder20Regular } from '@fluentui/react-icons';
+import { Settings20Regular, Folder20Regular, Bug20Regular, FolderSwap20Regular } from '@fluentui/react-icons';
 import { getPapyrusTheme, PapyrusThemeMode } from './PapyrusFluentUITheme';
 
 const useStyles = makeStyles({
@@ -41,18 +41,42 @@ export const MainSidebar: React.FC = () => {
   const persistedState = React.useMemo(() => window.__papyrusVsCodeApi?.getState?.() as { wizardCompleted?: boolean } | undefined, []);
   const [wizardCompleted, setWizardCompleted] = React.useState<boolean>(persistedState?.wizardCompleted ?? false);
 
-  const handleCompileCurrent = React.useCallback(() => {
-    if (window.__papyrusVsCodeApi?.postMessage) {
-      window.__papyrusVsCodeApi.postMessage({
-        command: 'compileFile'
-      });
-    }
-  }, []);
+  // const handleCompileCurrent = React.useCallback(() => {
+  //   if (window.__papyrusVsCodeApi?.postMessage) {
+  //     window.__papyrusVsCodeApi.postMessage({
+  //       command: 'compileFile'
+  //     });
+  //   }
+  // }, []);
 
   const handleSwitchGame = React.useCallback(() => {
     if (window.__papyrusVsCodeApi?.postMessage) {
       window.__papyrusVsCodeApi.postMessage({
         command: 'switchGame'
+      });
+    }
+  }, []);
+
+  // const handleCompileAllProjectFiles = React.useCallback(() => {
+  //   if (window.__papyrusVsCodeApi?.postMessage) {
+  //     window.__papyrusVsCodeApi.postMessage({
+  //       command: 'compileAllProjectFiles'
+  //     });
+  //   }
+  // }, []);
+
+  const handleDebugActiveProject = React.useCallback(() => {
+    if (window.__papyrusVsCodeApi?.postMessage) {
+      window.__papyrusVsCodeApi.postMessage({
+        command: 'debugActiveProject'
+      });
+    }
+  }, []);
+
+  const handleSwitchActiveProject = React.useCallback(() => {
+    if (window.__papyrusVsCodeApi?.postMessage) {
+      window.__papyrusVsCodeApi.postMessage({
+        command: 'switchActiveProject'
       });
     }
   }, []);
@@ -109,14 +133,14 @@ export const MainSidebar: React.FC = () => {
             </Button>
           ) : (
             <>
-              <Button
+              {/* <Button
                 appearance="primary"
                 icon={<Play20Regular />}
                 className={styles.actionButton}
                 onClick={handleCompileCurrent}
               >
                 Compile Current File
-              </Button>
+              </Button> */}
 
               <Button
                 appearance="secondary"
@@ -125,6 +149,33 @@ export const MainSidebar: React.FC = () => {
                 onClick={handleSwitchGame}
               >
                 Switch Game Profile
+              </Button>
+
+              {/* <Button
+                appearance="secondary"
+                icon={<DocumentMultiple20Regular />}
+                className={styles.actionButton}
+                onClick={handleCompileAllProjectFiles}
+              >
+                Compile All Project Files
+              </Button> */}
+
+              <Button
+                appearance="secondary"
+                icon={<Bug20Regular />}
+                className={styles.actionButton}
+                onClick={handleDebugActiveProject}
+              >
+                Debug Active Project
+              </Button>
+
+              <Button
+                appearance="secondary"
+                icon={<FolderSwap20Regular />}
+                className={styles.actionButton}
+                onClick={handleSwitchActiveProject}
+              >
+                Switch Active Project
               </Button>
             </>
           )}

@@ -35,19 +35,6 @@ class PapyrusToolsServer {
       return {
         tools: [
           {
-            name: 'compile_file',
-            description: 'Compile the currently active Papyrus script file',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                filePath: {
-                  type: 'string',
-                  description: 'Path to the Papyrus file to compile (optional, uses active file if not provided)',
-                },
-              },
-            },
-          },
-          {
             name: 'switch_game',
             description: 'Switch the active Papyrus game profile',
             inputSchema: {
@@ -134,8 +121,6 @@ class PapyrusToolsServer {
 
       try {
         switch (name) {
-          case 'compile_file':
-            return await this.handleCompileFile();
           case 'switch_game':
             return await this.handleSwitchGame(args);
           case 'get_game_config':
@@ -173,17 +158,6 @@ class PapyrusToolsServer {
         },
       };
     });
-  }
-
-  private async handleCompileFile() {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `To compile a Papyrus file:\n\n1. Open the .psc file in VS Code\n2. Use Command Palette: "Papyrus: Compile Current File" (Ctrl+Shift+P)\n3. Or click the compile button in the editor title bar\n\nThe compiled .pex file will be generated in your configured output directory.`,
-        },
-      ],
-    };
   }
 
   private async handleSwitchGame(args: any) {
