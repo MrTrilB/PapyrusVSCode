@@ -2,7 +2,7 @@
   "name": "papyrus-tools",
   "displayName": "Papyrus Tools",
   "description": "Papyrus scripting support for Bethesda games: syntax highlighting, snippets, completions, and hovers.",
-  "version": "0.1.47",
+  "version": "1.0.0",
   "publisher": "MrTrilB",
   "license": "MIT",
   "homepage": "https://trilb.dev/",

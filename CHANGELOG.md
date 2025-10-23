@@ -4,6 +4,18 @@ All notable changes to the "papyrus-tools" extension will be documented in this 
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-10-23
+
+- **Major Release**: Papyrus Tools reaches version 1.0.0 with stable API and comprehensive Papyrus scripting support for Bethesda games.
+- Fixed multi-selection delete functionality in the project folder tree view to properly handle deleting multiple selected files and folders via both context menu and keyboard shortcuts.
+- Temporarily disabled all compile functionality across the extension (command palette, UI buttons, MCP server tools, and control center) to prevent compilation operations while preserving other Papyrus development features.
+- Added a new fragment snippet template for TopicInfo fragments with proper autocast sections, code blocks, and property declarations based on Bethesda game fragment structure.
+- Fixed UI issue where success icon appeared above success message on project creation success page.
+- Enhanced MCP server integration with GitHub Copilot Chat for Papyrus scripting assistance.
+- Improved control center with Fluent UI components for better user experience.
+- Added comprehensive project management features with workspace profiles.
+- Streamlined settings organization with per-game configuration sections.
+
 ## [0.1.47] - 2025-10-23
 
 - Fixed multi-selection delete functionality in the project folder tree view to properly handle deleting multiple selected files and folders via both context menu and keyboard shortcuts.
