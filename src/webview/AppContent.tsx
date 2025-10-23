@@ -349,15 +349,16 @@ const useStyles = makeStyles({
     display: 'block'
   },
   successView: {
-    display: 'grid',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     rowGap: tokens.spacingVerticalXL,
     textAlign: 'center',
     padding: tokens.spacingVerticalXXL
   },
   successIcon: {
     fontSize: tokens.fontSizeHero800,
-    color: tokens.colorStatusSuccessForeground1,
-    justifySelf: 'center'
+    color: tokens.colorStatusSuccessForeground1
   },
   successTitle: {
     marginTop: tokens.spacingVerticalL,
