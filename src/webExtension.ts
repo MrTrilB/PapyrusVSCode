@@ -12,11 +12,9 @@ const PAPYRUS_TYPES = [
 ];
 
 const DESKTOP_ONLY_COMMANDS: Array<{ id: string; title: string }> = [
-  { id: 'papyrusTools.compileFile', title: 'Papyrus: Compile Current File' },
   { id: 'papyrusTools.switchGame', title: 'Papyrus: Switch Game Profile' },
   { id: 'papyrusTools.switchProject', title: 'Papyrus: Switch Project' },
   { id: 'papyrusTools.openControlCenter', title: 'Papyrus: Open Control Center' },
-  { id: 'papyrusTools.configureCompilers', title: 'Papyrus: Configure Compiler Paths' },
   { id: 'papyrusTools.configureScriptFolders', title: 'Papyrus: Configure Script Folders' },
   { id: 'papyrusTools.rebuildIndex', title: 'Papyrus: Rebuild Script Index' },
   { id: 'papyrusTools.addScriptFolder', title: 'Papyrus: Add Script Folder' },
